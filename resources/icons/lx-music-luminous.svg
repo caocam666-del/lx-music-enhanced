@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">LX Music</title>
+  <desc id="desc">A luminous glass music icon with the LX Music mark and animated-wave inspiration.</desc>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="80" x2="900" y2="950" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#173b72"/>
+      <stop offset=".48" stop-color="#2563c7"/>
+      <stop offset="1" stop-color="#45c99a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(230 170) rotate(45) scale(720)">
+      <stop stop-color="#9cf4e0" stop-opacity=".62"/>
+      <stop offset="1" stop-color="#9cf4e0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mark" x1="390" y1="220" x2="650" y2="780" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#d5fff3"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#08233e" flood-opacity=".38"/>
+    </filter>
+    <clipPath id="clip">
+      <!-- Full bleed background avoids a light halo on Windows small icons. -->
+      <rect width="1024" height="1024"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#clip)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+    <path d="M-80 730C170 560 290 905 570 748s355-125 560-225v510H-80Z" fill="#0e3155" opacity=".22"/>
+    <path d="M-90 390C180 210 285 480 495 338S795 175 1110 292" fill="none" stroke="#b8fff0" stroke-linecap="round" stroke-width="18" opacity=".17"/>
+
+    <g filter="url(#shadow)">
+      <circle cx="512" cy="512" r="292" fill="#062b4c" opacity=".27"/>
+      <circle cx="512" cy="512" r="270" fill="#eafff9" fill-opacity=".12" stroke="#eafff9" stroke-opacity=".34" stroke-width="3"/>
+    </g>
+
+    <g fill="none" stroke="#c9fff2" stroke-linecap="round" opacity=".72">
+      <path d="M320 640v-92" stroke-width="24"/>
+      <path d="M378 640V468" stroke-width="24"/>
+      <path d="M436 640V392" stroke-width="24"/>
+      <path d="M588 640V370" stroke-width="24"/>
+      <path d="M646 640V446" stroke-width="24"/>
+      <path d="M704 640v-112" stroke-width="24"/>
+    </g>
+
+    <g transform="translate(293 228) scale(.98)" fill="url(#mark)">
+      <path d="M203.806.482c-19.668-3.346-35.76 11.139-35.76 31.086v206.166c-11.642-4.271-24.165-6.725-37.281-6.725-59.905 0-108.469 48.566-108.469 108.473 0 59.903 48.564 108.461 108.469 108.461 34.141 0 64.54-15.82 84.406-40.482l-49.658-49.664c-15.116-15.112-11.708-28.901-9.542-34.14 2.166-5.233 9.514-17.4 30.883-17.4h18.082v-56.885c0-21.132 14.617-38.862 34.266-43.745.032-44.373.032-81.808.032-81.808 140.147 0 131.724 83.974 115.325 132.196-6.42 18.884-2.601 22.05 10.893 7.354C536.473 77.106 298.38 16.566 203.806.482z"/>
+      <path d="M301.061 223.876h-50.994c-3.911 0-7.574.95-10.889 2.523-8.616 4.09-14.615 12.798-14.615 22.973v76.51h-37.708c-14.082 0-17.428 8.071-7.466 18.029l46.893 46.898 31.25 31.246a25.424 25.424 0 0 0 18.033 7.474c6.523 0 13.052-2.484 18.029-7.474l78.152-78.145c9.951-9.958 6.608-18.029-7.47-18.029h-37.71v-76.51c.001-14.078-11.42-25.495-25.505-25.495z"/>
+    </g>
+
+    <path d="M214 170h596" stroke="#fff" stroke-linecap="round" stroke-width="18" opacity=".12"/>
+  </g>
+</svg>

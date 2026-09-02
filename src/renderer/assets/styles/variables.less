@@ -1,0 +1,36 @@
+@import './colors.less';
+
+
+// Width
+// Luminous Harmonic: 侧栏固定 220px (按用户反馈"超过顶部 LOGO 再稍微预留一点"为准, 不再是 260 也不占位过多)
+@width-app-left: 220px;
+
+// Height
+@height-toolbar: 60px; // 顶栏 (与设计稿 topbar 64px 接近)
+@height-player: 84px; // Luminous Harmonic: 播放栏容器 84px (悬浮胶囊约 70px + 上下留白; 旧值 110px 已废弃)
+
+
+// Shadow
+@shadow-app: 8px;
+
+
+// Radius
+@radius-progress-border: 5px;
+@radius-border: 8px; // Luminous Harmonic: 统一 8px 圆角 (ROUND_EIGHT)
+@radius-glass: 12px; // 玻璃卡片圆角
+@radius-glass-lg: 16px; // 大容器圆角 (侧边栏主体/弹窗)
+
+@transition-slow: .6s ease;
+@transition-normal: .4s ease;
+@transition-fast: .3s cubic-bezier(0.4, 0, 0.2, 1);
+
+// Luminous Harmonic: 统一动效 token (对标 Pure-music MotionDuration/MotionCurve)
+// 微交互 120ms / 常规过渡 180ms / 容器级过渡 280ms; 曲线: 标准 / 强调 / 入场
+@motion-fast: 120ms;
+@motion-base: 180ms;
+@motion-medium: 280ms;
+@ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+@ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+@ease-entrance: cubic-bezier(0.23, 1, 0.32, 1);
+
+@form-radius: 8px; // Luminous Harmonic: 输入框统一 8px

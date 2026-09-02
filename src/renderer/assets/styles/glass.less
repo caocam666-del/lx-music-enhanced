@@ -1,0 +1,62 @@
+// ============================================================
+// Luminous Harmonic - 玻璃拟态全局样式系统
+// 依赖主题注入的 CSS 变量 (--glass-*), 由 createThemes.js 统一生成
+// 深色: 40% 透明 + 24-40px 模糊 / 浅色: 70% 透明 + 12-20px 模糊
+// ============================================================
+@import './variables.less';
+
+// ---------- 玻璃面板 (侧边栏 / 工具栏 / 播放器等结构面板) ----------
+.mixin-glass-panel() {
+  background-color: color-mix(in srgb, var(--glass-surface, rgba(255, 255, 255, 0.7)) calc(var(--glass-alpha, 0.8) * 100%), transparent);
+  backdrop-filter: blur(var(--glass-blur, 12px));
+  border: 1px solid var(--glass-stroke, rgba(255, 255, 255, 0.4));
+  box-shadow: var(--glass-shadow, 0 8px 32px rgba(15, 23, 42, 0.06));
+}
+
+// 强玻璃 (底部播放器 / 弹窗, 模糊度最高保证滚动内容上的易读性)
+.mixin-glass-panel-strong() {
+  background-color: var(--glass-surface-strong, rgba(255, 255, 255, 0.78));
+  backdrop-filter: blur(var(--glass-blur-strong, 20px)) saturate(1.4);
+  border: 1px solid var(--glass-stroke-strong, rgba(255, 255, 255, 0.65));
+  box-shadow: var(--glass-shadow, 0 8px 32px rgba(15, 23, 42, 0.06));
+}
+
+// ---------- 玻璃卡片 (列表卡片 / 表格容器) ----------
+.mixin-glass-card() {
+  background-color: color-mix(in srgb, var(--glass-card, rgba(255, 255, 255, 0.55)) calc(var(--glass-alpha, 0.8) * 100%), transparent);
+  backdrop-filter: blur(var(--glass-blur, 12px));
+  border: 1px solid var(--glass-stroke, rgba(255, 255, 255, 0.4));
+  border-radius: var(--lx-radius, @radius-glass);
+  transition: background-color @transition-fast, border-color @transition-fast, transform @transition-fast, box-shadow @transition-fast;
+}
+
+.mixin-glass-card-hover() {
+  background-color: var(--glass-card-hover, rgba(255, 255, 255, 0.85));
+  border-color: var(--glass-stroke-strong, rgba(255, 255, 255, 0.65));
+  box-shadow: var(--glass-shadow, 0 8px 32px rgba(15, 23, 42, 0.06));
+}
+
+// ---------- 工具类 ----------
+.glass-panel {
+  .mixin-glass-panel();
+}
+.glass-panel-strong {
+  .mixin-glass-panel-strong();
+}
+.glass-card {
+  .mixin-glass-card();
+
+  &:hover {
+    .mixin-glass-card-hover();
+  }
+}
+
+// ---------- 性能与可访问性降级 ----------
+// 减少动态偏好: 关闭 hover 位移动画
+@media (prefers-reduced-motion: reduce) {
+  .glass-card,
+  .glass-panel,
+  .glass-panel-strong {
+    transition: none;
+  }
+}

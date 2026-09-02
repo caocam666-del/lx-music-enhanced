@@ -1,0 +1,217 @@
+<template>
+  <div
+    :class="[$style.sliderContent, { [$style.disabled]: disabled }, className]"
+    role="slider"
+    tabindex="0"
+    :aria-valuemin="min"
+    :aria-valuemax="max"
+    :aria-valuenow="value"
+    :aria-disabled="disabled ? 'true' : undefined"
+    @keydown="handleKeyDown"
+  >
+    <div :class="[$style.slider]">
+      <div ref="dom_sliderBar" :class="$style.sliderBar" :style="{ transform: `scaleX(${(value - min) / (max - min) || 0})` }" />
+    </div>
+    <div :class="$style.sliderMask" @mousedown="handleSliderMsDown" />
+  </div>
+</template>
+
+<script>
+import { ref, onBeforeUnmount } from '@common/utils/vueTools'
+// import { player as eventPlayerNames } from '@renderer/event/names'
+
+export default {
+  props: {
+    className: {
+      type: String,
+      default: '',
+    },
+    value: {
+      type: Number,
+      required: true,
+    },
+    min: {
+      type: Number,
+      required: true,
+    },
+    max: {
+      type: Number,
+      required: true,
+    },
+    step: {
+      type: Number,
+      default: 1,
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ['change'],
+  setup(props, { emit }) {
+    const sliderEvent = {
+      isMsDown: false,
+      msDownX: 0,
+      msDownRatio: 0,
+    }
+    const dom_sliderBar = ref(null)
+
+    const clampValue = val => {
+      if (val < props.min) return props.min
+      if (val > props.max) return props.max
+      return val
+    }
+    const getSteppedValue = val => {
+      const step = props.step > 0 ? props.step : 1
+      const stepped = Math.round((val - props.min) / step) * step + props.min
+      return clampValue(Number(stepped.toFixed(10)))
+    }
+    const getSliderWidth = () => dom_sliderBar.value?.clientWidth || 0
+    const getRange = () => props.max - props.min
+    const emitSteppedValue = rawValue => {
+      const value = getSteppedValue(rawValue)
+      emit('change', value)
+      return value
+    }
+
+    const handleSliderMsDown = event => {
+      if (props.disabled) return
+      const width = getSliderWidth()
+      if (!width) return
+
+      sliderEvent.isMsDown = true
+      sliderEvent.msDownX = event.clientX
+
+      const rawValue = (event.offsetX / width) * getRange() + props.min
+      const value = emitSteppedValue(rawValue)
+      sliderEvent.msDownRatio = getRange() === 0 ? 0 : (value - props.min) / getRange()
+    }
+    const handleSliderMsUp = () => {
+      sliderEvent.isMsDown = false
+    }
+    const handleSliderMsMove = event => {
+      if (!sliderEvent.isMsDown || props.disabled) return
+      const width = getSliderWidth()
+      if (!width) return
+
+      const ratio = sliderEvent.msDownRatio + (event.clientX - sliderEvent.msDownX) / width
+      const rawValue = ratio * getRange() + props.min
+      emitSteppedValue(rawValue)
+    }
+
+    // Luminous Harmonic: 键盘无障碍 — 方向键按 step 调值, Home/End 到两端 (音量条等场景可用键盘操作)
+    const handleKeyDown = event => {
+      if (props.disabled) return
+      const step = props.step > 0 ? props.step : 1
+      let handled = true
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowUp':
+          emitSteppedValue(props.value + step)
+          break
+        case 'ArrowLeft':
+        case 'ArrowDown':
+          emitSteppedValue(props.value - step)
+          break
+        case 'Home':
+          emitSteppedValue(props.min)
+          break
+        case 'End':
+          emitSteppedValue(props.max)
+          break
+        default:
+          handled = false
+      }
+      if (handled) event.preventDefault()
+    }
+
+    document.addEventListener('mousemove', handleSliderMsMove)
+    document.addEventListener('mouseup', handleSliderMsUp)
+    onBeforeUnmount(() => {
+      document.removeEventListener('mousemove', handleSliderMsMove)
+      document.removeEventListener('mouseup', handleSliderMsUp)
+    })
+
+    return {
+      handleSliderMsDown,
+      handleKeyDown,
+      dom_sliderBar,
+    }
+  },
+}
+</script>
+
+<style lang="less" module>
+@import '@renderer/assets/styles/layout.less';
+
+.sliderContent {
+  flex: none;
+  position: relative;
+  width: 100px;
+  padding: 5px 0;
+  // margin-right: 10px;
+  display: flex;
+  align-items: center;
+  opacity: .5;
+  transition: opacity @transition-normal;
+  &:hover {
+    opacity: 1;
+  }
+  &.disabled {
+    opacity: .3;
+    .sliderMask {
+      cursor: default;
+    }
+  }
+}
+
+.slider {
+  // cursor: pointer;
+  width: 100%;
+  height: 5px;
+  border-radius: 20px;
+  overflow: hidden;
+  transition: @transition-normal;
+  transition-property: background-color, opacity;
+  background-color: var(--color-primary-alpha-700);
+  // background-color: #f5f5f5;
+  position: relative;
+  // border-radius: @radius-progress-border;
+}
+
+// .muted {
+//   opacity: .5;
+// }
+
+.sliderBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: scaleX(0);
+  transform-origin: 0;
+  transition-property: transform;
+  transition-timing-function: ease;
+  width: 100%;
+  height: 100%;
+  // border-radius: @radius-progress-border;
+  transition-duration: 0.2s;
+  background-color: var(--color-button-font);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.sliderMask {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+// Luminous Harmonic: 键盘聚焦可见性（无障碍）
+.sliderContent:focus-visible {
+  outline: 1px solid var(--color-primary);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+</style>

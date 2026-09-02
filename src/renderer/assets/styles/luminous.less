@@ -1,0 +1,248 @@
+// ============================================================
+// Luminous Harmonic - 设计系统
+// 流光背景动画 / 玻璃卡片 / 自定义滚动条 / 滑块样式
+// 依赖 createThemes.js 注入的 --color-* / --glass-* 变量
+// 深色: bg #111318 / primary #adc6ff / blobs blue+purple
+// 浅色: bg #f7f9fb / primary #2563eb / blobs blue+indigo
+// ============================================================
+@import './variables.less';
+
+:root {
+  --player-accent: var(--color-primary, #4a8eff);
+  --player-accent-soft: var(--color-primary-light-200, var(--player-accent));
+  --player-on-accent: var(--color-on-primary, var(--color-primary-font, #fff));
+  --player-muted: var(--color-font-label, rgba(255, 255, 255, 0.66));
+  --player-border: var(--glass-stroke, rgba(255, 255, 255, 0.12));
+  --player-glow: var(--color-primary-alpha-600, rgba(74, 142, 255, 0.4));
+  --player-like: var(--color-primary, #4a8eff);
+}
+
+// ---------- 自定义壁纸背景 (可选, z-index:-2 在最底层) ----------
+#lx-wallpaper-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 0.5s ease;
+  opacity: var(--lx-wallpaper-opacity, 0.4);
+}
+
+// ---------- 流光背景 (3 个渐变球慢速漂移, GPU 加速) ----------
+#luminous-bg {
+  position: fixed;
+  inset: 0;
+  // Luminous Harmonic: 背景层在内容之下.
+  // 实际 z-index: 0 (不是注释曾写的 -1) — 依赖 #main/#player 的 z-index: 1 压在其上;
+  // 这个"脆弱平衡"是有意为之: 流光球需要透出在 #container 背景之上、内容之下.
+  z-index: 0;
+  pointer-events: none;
+  // 背景透明度跟随设置页滑块 (不影响上层内容)
+  opacity: var(--lx-bg-alpha, 1);
+  transition: opacity 0.3s ease;
+  overflow: hidden;
+  // 基底色: 深色用近黑, 浅色用近白 (luminous_blobs 透明度叠加)
+  background-color: var(--color-content-background, var(--luminous-bg-base, #111318));
+  background-image: var(--background-image, none);
+  background-position: var(--background-image-position, center);
+  background-size: var(--background-image-size, cover);
+  background-repeat: no-repeat;
+
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    will-change: transform;
+    opacity: var(--luminous-blob-opacity, 0.55);
+    // Luminous Harmonic: blur 80→56px — gradient 自带 70% 软边羽化, 视觉差异极小, 常驻合成成本显著降低
+    filter: blur(56px);
+  }
+
+  .blob-1 {
+    width: 55vw;
+    height: 55vw;
+    top: -12%;
+    right: -10%;
+    background: radial-gradient(circle, var(--luminous-blob-1, #4b8eff) 0%, transparent 70%);
+    animation: luminous-drift-1 38s ease-in-out infinite;
+  }
+
+  .blob-2 {
+    width: 45vw;
+    height: 45vw;
+    bottom: -8%;
+    left: -10%;
+    background: radial-gradient(circle, var(--luminous-blob-2, #7d01b1) 0%, transparent 70%);
+    animation: luminous-drift-2 52s ease-in-out infinite;
+  }
+
+  .blob-3 {
+    width: 35vw;
+    height: 35vw;
+    top: 35%;
+    left: 25%;
+    background: radial-gradient(circle, var(--luminous-blob-3, #ff506c) 0%, transparent 70%);
+    opacity: calc(var(--luminous-blob-opacity, 0.55) * 0.45);
+    animation: luminous-drift-3 64s ease-in-out infinite;
+  }
+}
+
+@keyframes luminous-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-12vw, 8vh) scale(1.12); }
+  66%      { transform: translate(8vw, -6vh) scale(0.92); }
+}
+@keyframes luminous-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(16vw, -10vh) scale(1.18); }
+  66%      { transform: translate(-8vw, 12vh) scale(0.86); }
+}
+@keyframes luminous-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(12vw, 14vh) scale(1.25); }
+}
+
+// ---------- #root 透明, 让流光背景透过 ----------
+#root {
+  background-color: color-mix(in srgb, var(--color-content-background, var(--luminous-bg-base, #111318)) calc(var(--lx-bg-alpha, 1) * 100%), transparent);
+}
+
+// ---------- 玻璃面板增强版 (深色 / 浅色自适应) ----------
+.glass-surface {
+  background: color-mix(in srgb, var(--glass-surface, rgba(30, 32, 36, 0.4)) calc(var(--glass-alpha, 0.8) * 100%), transparent);
+  backdrop-filter: blur(var(--glass-blur, 20px)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(1.3);
+  border: 1px solid var(--glass-stroke, rgba(255, 255, 255, 0.08));
+}
+.glass-surface-strong {
+  background: color-mix(in srgb, var(--glass-surface-strong, rgba(30, 32, 36, 0.55)) calc(var(--glass-alpha, 0.8) * 100%), transparent);
+  backdrop-filter: blur(var(--glass-blur-strong, 32px)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong, 32px)) saturate(1.4);
+  border: 1px solid var(--glass-stroke-strong, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
+}
+
+// ---------- 自定义滚动条 (玻璃风格, 低调精致) ----------
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  min-height: 40px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-hover, rgba(255, 255, 255, 0.25));
+  border-color: var(--glass-stroke, rgba(255, 255, 255, 0.08));
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-scrollbar-hover, rgba(255, 255, 255, 0.35));
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+// ---------- 滑块 (设置页音量 / 缓存大小 / 播放进度) ----------
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 16px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-slider-track, rgba(255, 255, 255, 0.1));
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--color-primary-alpha-700, rgba(173, 198, 255, 0.5));
+  transition: transform @transition-fast;
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+// ---------- 搜索加载骨架屏 shimmer ----------
+.lx-shimmer {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--glass-card, rgba(255,255,255,0.03)) calc(var(--glass-alpha, .8) * 100%), transparent) 25%,
+    color-mix(in srgb, var(--glass-card-hover, rgba(255,255,255,0.08)) calc(var(--glass-alpha, .8) * 100%), transparent) 50%,
+    color-mix(in srgb, var(--glass-card, rgba(255,255,255,0.03)) calc(var(--glass-alpha, .8) * 100%), transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: lx-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--lx-radius, 8px);
+  border: 1px solid var(--glass-stroke, transparent);
+}
+@keyframes lx-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ---------- 减弱动画偏好降级 ----------
+@media (prefers-reduced-motion: reduce) {
+  #luminous-bg .blob {
+    animation: none;
+  }
+  .glass-card,
+  .glass-surface,
+  .glass-surface-strong {
+    transition: none;
+  }
+}
+
+// ---------- 标签胶囊 (下载进度条 / 状态徽章) ----------
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 999px;
+  background: var(--color-primary-alpha-700, rgba(173, 198, 255, 0.15));
+  color: var(--color-primary);
+}
+
+// Luminous Harmonic: 全局字体 (Manrope 做标题, Inter 做正文)
+body {
+  font-family: 'Inter', 'Manrope', -apple-system, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+// 圆角 CSS 变量默认值 (设置页滑块可调)
+:root {
+  --lx-radius: 12px;
+  --lx-radius-sm: 8px;
+  --lx-radius-lg: 16px;
+  --lx-bg-alpha: 1;
+}
+
+// Luminous Harmonic: 进度条 hover 微动效 — hover 时高度放大 + 滑块浮现
+.player:hover {
+  .progress-bar,
+  .progress-bar-wrapper {
+    input[type='range'] {
+      height: 6px;
+      transition: height 0.2s ease;
+      &::-webkit-slider-thumb {
+        opacity: 1;
+      }
+    }
+  }
+}
