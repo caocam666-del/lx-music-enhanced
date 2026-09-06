@@ -366,16 +366,24 @@ export default {
   flex: none;
   display: flex;
   align-items: center;
-  flex-wrap: wrap; // 按钮放不下时换行, 不越出侧栏
-  gap: 10px;
+  flex-wrap: wrap; // 兜底: 极端窄面板才换行
+  gap: 8px;
   max-width: 100%;
   padding: 0 4px 10px;
 }
 .platformBtn {
-  flex: none;
-  width: 30px;
-  height: 30px;
+  flex: 0 1 auto; // 允许收缩: 面板再窄也单行放下, 按钮等比压缩
+  min-width: 0;
+  width: 28px;
+  height: 28px;
   padding: 0;
+  overflow: hidden;
+
+  svg {
+    width: auto;
+    max-width: 100%;
+    height: 70%;
+  }
   border: none;
   background: transparent;
   border-radius: 8px;
