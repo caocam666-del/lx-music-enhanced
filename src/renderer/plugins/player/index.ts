@@ -58,6 +58,32 @@ let defaultChannelCount = 2
 export const soundR = 0.5
 
 
+// ==================== 音频事件注册表 (切歌过渡: 元素角色交换时监听器可随迁) ====================
+type Noop = () => void
+const audioEventCallbacks = new Map<string, Set<Noop>>()
+const listenAudio = (evt: string, cb: Noop) => {
+  let set = audioEventCallbacks.get(evt)
+  if (!set) {
+    set = new Set()
+    audioEventCallbacks.set(evt, set)
+  }
+  set.add(cb)
+  audio?.addEventListener(evt, cb)
+  return () => {
+    set?.delete(cb)
+    audio?.removeEventListener(evt, cb)
+  }
+}
+// 把注册表中的全部监听器从旧元素迁移到新元素 (交叉淡化完成后新旧角色交换)
+const swapAudioListeners = (oldEl: HTMLAudioElement, newEl: HTMLAudioElement) => {
+  for (const [evt, cbs] of audioEventCallbacks) {
+    for (const cb of cbs) {
+      oldEl.removeEventListener(evt, cb)
+      newEl.addEventListener(evt, cb)
+    }
+  }
+}
+
 export const createAudio = () => {
   if (audio) return
   audio = new window.Audio() as HTMLAudioElementChrome
@@ -67,7 +93,7 @@ export const createAudio = () => {
   audio.crossOrigin = 'anonymous'
 
   // https://developer.chrome.com/blog/autoplay
-  audio.addEventListener('playing', () => {
+  listenAudio('playing', () => {
     if (audioContext?.state == 'suspended') {
       void audioContext.resume().catch((err) => {
         console.error('Resume audio context failed:', err)
@@ -75,6 +101,8 @@ export const createAudio = () => {
       })
     }
   })
+  // 切歌过渡 (复刻 pure-music): 注册过渡引擎的播放器事件监听
+  initSongTransition()
 }
 
 const initAnalyser = () => {
@@ -392,8 +420,403 @@ export const setPitchShifter = (val: number) => {
 
 export const hasInitedAdvancedAudioFeatures = (): boolean => audioContext != null
 
+// ==================== 切歌过渡 (复刻 pure-music) ====================
+// 对齐 pure-music (BASS mixer) 的行为与参数:
+// none      无缝衔接: 曲尾提前预载下一首, 播完零间隙切换 (对应 gapless 队列)
+// fade      淡入淡出: 旧歌淡出结束后新歌再淡入 (顺序; pure-music fade 分支)
+// crossfade 交叉淡化: 剩余 CF_S 秒时新歌提前接入, 等功率曲线交叠混音 (pure-music 默认 4500ms)
+// smart     智能衔接: pure-music planner 的可流式化近似 —
+//           ① 尾部持续静音 → 提前切歌 (SILENCE_TRIM 思路, 跳过尾奏静音)
+//           ② 新歌开头静音 → 自动前跳 (entrance cue 思路)
+//           ③ 结尾能量自然衰减 → fade; 高能收尾 → energy_crossfade (4.5s 等功率)
+type SongTransitionMode = 'none' | 'fade' | 'crossfade' | 'smart'
+const PRELOAD_S = 15 // 提前解析并预载下一首的时机 (秒, 全部模式生效)
+const CF_S = 4.5 // 交叉淡化重叠窗口 (秒)
+const FADE_OUT_S = 3 // 淡出时长 (秒)
+const FADE_IN_S = 1.5 // 淡入时长 (秒)
+const EARLY_SWITCH_MIN_S = 6 // 提前切歌要求的最小剩余时长 (秒)
+const LEAD_SKIP_MAX_S = 6 // 新歌开头静音最多前跳 (秒)
+const SILENCE_FLOOR = 0.008 // 静音判定阈值 (RMS, ≈ -42dBFS)
+const SILENCE_HOLD_MS = 2500 // 尾部持续静音判定窗口 (毫秒)
+
+type CrossfadeRequestHandler = () => Promise<string | null>
+let crossfadeRequestHandler: CrossfadeRequestHandler | null = null
+// core/player/action 注入: 解析下一首并预取播放 URL (返回 null 表示无法预载)
+export const setCrossfadeRequestHandler = (handler: CrossfadeRequestHandler | null) => {
+  crossfadeRequestHandler = handler
+}
+
+const transitionState = {
+  mode: 'none' as SongTransitionMode,
+  active: false, // 交叉淡化/提前切歌进行中
+  preloadTried: false, // 本首歌是否已触发下一首预载
+  waitingCrossfade: false, // 预载完成且处于交叉窗口, 等待/正在开始交叠
+  shadow: null as HTMLAudioElementChrome | null,
+  pendingUrl: '', // 已预载的下一首 URL
+  fadeInNext: false, // 上首歌淡出自然结束后, 新歌需要淡入
+  fadeOutStarted: false,
+  earlySwitched: false, // 智能衔接: 已因尾部静音提前切歌
+  silenceSince: null as number | null,
+  smartSamples: [] as Array<{ t: number, rms: number }>,
+  smartDecided: null as null | 'fade' | 'crossfade',
+  rampTokens: new WeakMap<HTMLAudioElement, number>(),
+  baseVolume: 1,
+  promotedViaTransition: false, // 交叉淡化已在 ended 时完成接管, action 层的 setStop/setResource 需让行
+}
+
+const shadowSourceMap = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>()
+
+export const setSongTransition = (mode: SongTransitionMode) => {
+  transitionState.mode = mode
+  cancelTransition(false)
+}
+
+const cancelRamp = (el: HTMLAudioElement) => {
+  transitionState.rampTokens.set(el, (transitionState.rampTokens.get(el) ?? 0) + 1)
+}
+
+// 曲线: 'out' 等功率淡出 (慢起快收) / 'in' 等功率淡入 (快起慢收) / 'lin' 线性
+const rampVolume = (el: HTMLAudioElement, to: number, durSec: number, curve: 'out' | 'in' | 'lin' = 'lin', onDone?: () => void) => {
+  const token = (transitionState.rampTokens.get(el) ?? 0) + 1
+  transitionState.rampTokens.set(el, token)
+  const from = el.volume
+  const start = performance.now()
+  const durMs = Math.max(50, durSec * 1000)
+  const shaped = (progress: number) => {
+    switch (curve) {
+      case 'out': return to + (from - to) * Math.cos(progress * Math.PI / 2)
+      case 'in': return from + (to - from) * Math.sin(progress * Math.PI / 2)
+      default: return from + (to - from) * progress
+    }
+  }
+  // 注意: 必须用 setInterval 而非 requestAnimationFrame —
+  // 窗口在后台时 rAF 完全暂停, 渐变会冻在半路 (音量卡在极小值直到用户拖动进度条)
+  const timer = window.setInterval(() => {
+    if (transitionState.rampTokens.get(el) !== token) {
+      window.clearInterval(timer)
+      return
+    }
+    const progress = Math.min(1, (performance.now() - start) / durMs)
+    el.volume = Math.max(0, Math.min(1, shaped(progress)))
+    if (progress >= 1) {
+      window.clearInterval(timer)
+      onDone?.()
+    }
+  }, 40)
+}
+
+// 本首歌的过渡状态复位 (切到新歌/剩余时间回到窗口外时)
+const resetTrackTransitionState = () => {
+  transitionState.preloadTried = false
+  transitionState.waitingCrossfade = false
+  transitionState.pendingUrl = ''
+  transitionState.fadeOutStarted = false
+  transitionState.fadeInNext = false
+  transitionState.earlySwitched = false
+  transitionState.silenceSince = null
+  transitionState.smartSamples = []
+  transitionState.smartDecided = null
+}
+
+const getShadowElement = () => {
+  if (!transitionState.shadow) {
+    transitionState.shadow = new window.Audio() as HTMLAudioElementChrome
+    transitionState.shadow.preload = 'auto'
+  }
+  // 已初始化音效链时, 影子元素接入同一链路 (共享均衡器/混响等); 未初始化则直接输出
+  if (audioContext && !shadowSourceMap.has(transitionState.shadow)) {
+    try {
+      const source = audioContext.createMediaElementSource(transitionState.shadow)
+      source.connect(analyser)
+      shadowSourceMap.set(transitionState.shadow, source)
+    } catch { /* 接入失败则直连输出 */ }
+  }
+  return transitionState.shadow
+}
+
+const cancelTransition = (restoreVolume = true) => {
+  transitionState.active = false
+  transitionState.promotedViaTransition = false
+  transitionState.waitingCrossfade = false
+  transitionState.pendingUrl = ''
+  transitionState.fadeInNext = false
+  transitionState.fadeOutStarted = false
+  transitionState.earlySwitched = false
+  transitionState.silenceSince = null
+  transitionState.smartDecided = null
+  transitionState.smartSamples = []
+  transitionState.preloadTried = false
+  const shadow = transitionState.shadow
+  if (shadow) {
+    cancelRamp(shadow)
+    try { shadow.pause(); shadow.removeAttribute('src') } catch { /* ignore */ }
+  }
+  if (restoreVolume && audio) {
+    cancelRamp(audio)
+    audio.volume = transitionState.baseVolume
+  }
+}
+
+const promoteShadow = () => {
+  const newAudio = transitionState.shadow
+  const oldAudio = audio
+  if (!newAudio || !oldAudio) return
+  if (pitchShifterNodeLoadStatus == 'connected') disconnectPitchShifterNode()
+  cancelRamp(newAudio)
+  newAudio.volume = transitionState.baseVolume
+  // 先迁移监听器再清理旧元素, 避免 old 清 src 触发 emptied 事件
+  console.log('[transition] promote shadow -> primary')
+  swapAudioListeners(oldAudio, newAudio)
+  audio = newAudio
+  transitionState.shadow = oldAudio
+  transitionState.active = false
+  transitionState.fadeInNext = false
+  resetTrackTransitionState()
+  // 注意: 必须在 resetTrackTransitionState 之后置位 — 该函数会重置本首歌的过渡状态,
+  // 而此标志是给随后的 action 层交接 (setStop/setResource 让行) 用的
+  transitionState.promotedViaTransition = true
+  try { oldAudio.pause(); oldAudio.removeAttribute('src') } catch { /* ignore */ }
+  if (pitchShifterNodeLoadStatus == 'connected') connectPitchShifterNode()
+}
+
+// 智能衔接: 采样结尾能量, 自然衰减→fade, 高能收尾→crossfade
+const sampleSmart = (remaining: number) => {
+  if (!analyser) return
+  try {
+    const buf = new Uint8Array(analyser.fftSize)
+    analyser.getByteTimeDomainData(buf)
+    let sum = 0
+    for (let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128
+      sum += v * v
+    }
+    transitionState.smartSamples.push({ t: remaining, rms: Math.sqrt(sum / buf.length) })
+  } catch { /* ignore */ }
+}
+
+const decideSmart = (): 'fade' | 'crossfade' => {
+  if (transitionState.smartDecided) return transitionState.smartDecided
+  const windowAvg = (lo: number, hi: number) => {
+    const arr = transitionState.smartSamples.filter(s => s.t <= lo && s.t >= hi)
+    if (!arr.length) return 0
+    return arr.reduce((sum, s) => sum + s.rms, 0) / arr.length
+  }
+  const early = windowAvg(PRELOAD_S, PRELOAD_S - 3)
+  const late = windowAvg(7, 5)
+  // 无参考数据 (音效链未初始化等) 或能量未明显衰减 → 交叉淡化; 能量明显衰减 → 淡入淡出
+  const decided = (early > 0 && late / early < 0.5) ? 'fade' : 'crossfade'
+  transitionState.smartDecided = decided
+  return decided
+}
+
+const effectiveMode = (): 'none' | 'fade' | 'crossfade' => {
+  switch (transitionState.mode) {
+    case 'fade': return 'fade'
+    case 'crossfade': return 'crossfade'
+    case 'smart': return decideSmart()
+    default: return 'none'
+  }
+}
+
+// 智能衔接: 新歌开头静音自动前跳 (entrance cue), 最多 LEAD_SKIP_MAX_S 秒
+const startLeadSilenceSkip = (shadow: HTMLAudioElementChrome) => {
+  const source = shadowSourceMap.get(shadow)
+  if (!source || !audioContext) return
+  let analyserNode: AnalyserNode
+  try {
+    analyserNode = audioContext.createAnalyser()
+    analyserNode.fftSize = 256
+    source.connect(analyserNode)
+  } catch { return }
+  const buf = new Uint8Array(analyserNode.fftSize)
+  let skipped = 0
+  const cleanup = () => {
+    window.clearInterval(timer)
+    try { source.disconnect(analyserNode) } catch { /* ignore */ }
+  }
+  const timer = window.setInterval(() => {
+    if (transitionState.shadow !== shadow || !transitionState.active) {
+      cleanup()
+      return
+    }
+    try { analyserNode.getByteTimeDomainData(buf) } catch { cleanup(); return }
+    let sum = 0
+    for (let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128
+      sum += v * v
+    }
+    const rms = Math.sqrt(sum / buf.length)
+    if (rms < SILENCE_FLOOR && skipped < LEAD_SKIP_MAX_S) {
+      skipped += 0.6
+      try { shadow.currentTime += 0.6 } catch { cleanup() }
+    } else {
+      cleanup()
+    }
+  }, 300)
+}
+
+const startOverlap = (fadeSec: number) => {
+  const el = audio
+  if (!el || !transitionState.pendingUrl) return
+  const url = transitionState.pendingUrl
+  transitionState.pendingUrl = ''
+  console.log('[transition] overlap start, fadeSec=' + fadeSec.toFixed(1))
+  transitionState.active = true
+  transitionState.waitingCrossfade = false
+  const shadow = getShadowElement()
+  shadow.volume = 0
+  shadow.src = url
+  void shadow.play().catch(() => {
+    cancelTransition(true)
+  })
+  rampVolume(shadow, transitionState.baseVolume, Math.max(1, fadeSec), 'in')
+  rampVolume(el, 0, fadeSec, 'out')
+  if (transitionState.mode == 'smart') startLeadSilenceSkip(shadow)
+}
+
+const tryStartCrossfade = () => {
+  if (!audio || transitionState.active || !transitionState.pendingUrl) return
+  if (effectiveMode() != 'crossfade') return // 只有交叉淡化才交叠; 其他模式预载仅用于零间隙切换
+  const duration = audio.duration
+  if (!isFinite(duration) || duration <= 0) return
+  const remaining = duration - audio.currentTime
+  if (remaining > CF_S) {
+    transitionState.waitingCrossfade = true
+    return
+  }
+  if (remaining <= 2) { // 剩余太短, 交叠听感差 → 放弃, 走自然切换 (已有预载, 间隙≈0)
+    transitionState.pendingUrl = ''
+    return
+  }
+  startOverlap(remaining)
+}
+
+// 智能衔接: 尾部持续静音 → 提前交叠切歌, 跳过尾奏静音
+const startEarlySwitch = () => {
+  const el = audio
+  if (!el || !transitionState.pendingUrl) return
+  console.log('[transition] smart: trailing silence, early switch')
+  transitionState.earlySwitched = true
+  startOverlap(1.5)
+  // 淡出完成后合成 ended 事件, 走正常切歌链 (playNext → 预载 URL → 影子元素无缝接管)
+  rampVolume(el, 0, 1.5, 'out', () => {
+    try { el.dispatchEvent(new Event('ended')) } catch { /* ignore */ }
+  })
+}
+
+const handleTimeUpdateForTransition = () => {
+  if (!audio || transitionState.active || transitionState.earlySwitched) return
+  const duration = audio.duration
+  if (!isFinite(duration) || duration <= 0) {
+    // 直播流/无时长: 复位窗口外状态
+    if (transitionState.preloadTried) resetTrackTransitionState()
+    return
+  }
+  const remaining = duration - audio.currentTime
+  if (remaining > PRELOAD_S) {
+    if (transitionState.preloadTried) resetTrackTransitionState()
+    return
+  }
+  if (transitionState.mode == 'smart') sampleSmart(remaining)
+
+  // 所有模式都提前预载下一首 URL — 消除切歌时的网络解析间隙 (pure-music 的"入队")
+  if (!transitionState.preloadTried) {
+    transitionState.preloadTried = true
+    void Promise.resolve(crossfadeRequestHandler?.() ?? null).then(url => {
+      console.log('[transition] preload:', url ? 'ok' : 'unavailable')
+      transitionState.pendingUrl = url ?? ''
+      tryStartCrossfade()
+    }).catch(err => {
+      console.log('[transition] preload failed:', err?.message ?? err)
+      transitionState.pendingUrl = ''
+    })
+  }
+
+  // 智能衔接: 尾部持续静音 → 提前切歌 (跳过尾奏静音)
+  if (transitionState.mode == 'smart' && remaining > EARLY_SWITCH_MIN_S) {
+    const last = transitionState.smartSamples.at(-1)
+    if (last && last.rms < SILENCE_FLOOR) {
+      if (transitionState.silenceSince == null) transitionState.silenceSince = performance.now()
+      else if (performance.now() - transitionState.silenceSince >= SILENCE_HOLD_MS && transitionState.pendingUrl) {
+        startEarlySwitch()
+        return
+      }
+    } else {
+      transitionState.silenceSince = null
+    }
+  }
+
+  const mode = effectiveMode()
+  if (mode == 'crossfade') {
+    tryStartCrossfade()
+    return // 交叠包络接管音量, 不再叠加淡出
+  }
+  if (mode == 'fade' && remaining <= FADE_OUT_S && !transitionState.fadeOutStarted && remaining > 0.15) {
+    transitionState.fadeOutStarted = true
+    rampVolume(audio, 0, remaining, 'out', () => {
+      transitionState.fadeInNext = true
+    })
+  }
+}
+
+const handlePlayingForTransition = () => {
+  if (transitionState.active) return
+  if (transitionState.fadeInNext && audio) {
+    transitionState.fadeInNext = false
+    audio.volume = 0
+    rampVolume(audio, transitionState.baseVolume, FADE_IN_S, 'in')
+  }
+}
+
+const initSongTransition = () => {
+  listenAudio('timeupdate', handleTimeUpdateForTransition)
+  listenAudio('playing', handlePlayingForTransition)
+  listenAudio('pause', () => {
+    // 暂停时终止交叠, 恢复主元素音量
+    if (transitionState.active) cancelTransition(true)
+  })
+  listenAudio('seeking', () => {
+    cancelTransition(false)
+    if (audio) audio.volume = transitionState.baseVolume
+  })
+  listenAudio('ended', () => {
+    if (!audio) return
+    // 交叉淡化交叠中旧歌自然播完 → 延迟一拍把影子元素转正, 新歌从已播位置继续 (不重新加载)。
+    // 必须异步: 同步转正会把注册表监听器从正在派发 ended 的旧元素上移走,
+    // 导致同一轮派发中尚未执行的 usePlayerEvent.onEnded (推进切歌链) 被丢弃
+    if (transitionState.active && transitionState.shadow) {
+      window.setTimeout(() => {
+        if (transitionState.active && transitionState.shadow) promoteShadow()
+      }, 0)
+      return
+    }
+    if (audio.volume < 0.05 && transitionState.mode == 'fade') transitionState.fadeInNext = true
+  })
+}
+
+export const getSongTransitionMode = (): SongTransitionMode => transitionState.mode
+
 export const setResource = (src: string) => {
-  if (audio) audio.src = src
+  if (!audio) return
+  // 交叉淡化进行中且换入的正是影子元素已在播的流 → 直接交换角色 (无缝接管, 不重新加载)
+  if (transitionState.active && transitionState.shadow && transitionState.shadow.src === src) {
+    promoteShadow()
+    return
+  }
+  const wasPromoted = transitionState.promotedViaTransition
+  // 淡入淡出: 淡出结束时置的"下一首淡入"标志必须跨过 cancelTransition 保留,
+  // 否则新歌会以淡出残留的近零音量开播且无人拉起 (直到用户拖动进度条)
+  const keepFadeIn = transitionState.fadeInNext
+  transitionState.promotedViaTransition = false
+  // 接管完成后 action 层送来同一首歌的 URL → 元素已在播该流, 忽略 (重新赋值会从头播放)
+  if (wasPromoted && (audio.src === src || audio.getAttribute('src') === src)) {
+    // 元素持续在播不会再触发 playing 事件, 手动补发以同步播放状态 (isPlay/进度)
+    audio.dispatchEvent(new Event('playing'))
+    return
+  }
+  cancelTransition(true)
+  transitionState.fadeInNext = keepFadeIn
+  audio.src = src
 }
 
 export const setPlay = () => {
@@ -405,6 +828,9 @@ export const setPause = () => {
 }
 
 export const setStop = () => {
+  // 交叉淡化接管后 audio 已是正在播的新歌, 此时 action 层的 handlePlay 会先调 setStop 清空 src —
+  // 不让行会把新歌杀掉 (随后 setResource 重新加载 → 新歌从头播放)
+  if (transitionState.promotedViaTransition) return
   if (audio) {
     audio.src = ''
     audio.removeAttribute('src')
@@ -455,7 +881,13 @@ export const setMediaDeviceId = async(mediaDeviceId: string): Promise<void> => {
 }
 
 export const setVolume = (volume: number) => {
-  if (audio) audio.volume = volume
+  transitionState.baseVolume = Math.max(0, Math.min(1, volume))
+  // 用户手动调整音量时立即接管, 打断过渡淡入淡出
+  if (audio && transitionState.active) cancelTransition(false)
+  if (audio) {
+    cancelRamp(audio)
+    audio.volume = transitionState.baseVolume
+  }
 }
 
 export const getDuration = () => {
@@ -467,97 +899,55 @@ export const getDuration = () => {
 //   return audio?.playbackRate ?? 1
 // }
 
-type Noop = () => void
-
 export const onPlaying = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('playing', callback)
-  return () => {
-    audio?.removeEventListener('playing', callback)
-  }
+  return listenAudio('playing', callback)
 }
 
 export const onPause = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio?.addEventListener('pause', callback)
-  return () => {
-    audio?.removeEventListener('pause', callback)
-  }
+  return listenAudio('pause', callback)
 }
 
 export const onEnded = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('ended', callback)
-  return () => {
-    audio?.removeEventListener('ended', callback)
-  }
+  return listenAudio('ended', callback)
 }
 
 export const onError = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('error', callback)
-  return () => {
-    audio?.removeEventListener('error', callback)
-  }
+  return listenAudio('error', callback)
 }
 
 export const onLoadeddata = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('loadeddata', callback)
-  return () => {
-    audio?.removeEventListener('loadeddata', callback)
-  }
+  return listenAudio('loadeddata', callback)
 }
 
 export const onLoadstart = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('loadstart', callback)
-  return () => {
-    audio?.removeEventListener('loadstart', callback)
-  }
+  return listenAudio('loadstart', callback)
 }
 
 export const onCanplay = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('canplay', callback)
-  return () => {
-    audio?.removeEventListener('canplay', callback)
-  }
+  return listenAudio('canplay', callback)
 }
 
 export const onEmptied = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('emptied', callback)
-  return () => {
-    audio?.removeEventListener('emptied', callback)
-  }
+  return listenAudio('emptied', callback)
 }
 
 export const onTimeupdate = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('timeupdate', callback)
-  return () => {
-    audio?.removeEventListener('timeupdate', callback)
-  }
+  return listenAudio('timeupdate', callback)
 }
 
 // 缓冲中
 export const onWaiting = (callback: Noop) => {
   if (!audio) throw new Error('audio not defined')
-
-  audio.addEventListener('waiting', callback)
-  return () => {
-    audio?.removeEventListener('waiting', callback)
-  }
+  return listenAudio('waiting', callback)
 }
 
 // 可见性改变

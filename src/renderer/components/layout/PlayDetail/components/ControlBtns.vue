@@ -8,9 +8,19 @@ div(:class="$style.footerLeftControlBtns")
   button(:class="[$style.footerLeftControlBtn, { [$style.active]: appSetting['player.audioVisualization'] }]" :aria-label="$t('audio_visualization')" @click="toggleAudioVisualization")
     svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="95%" viewBox="0 0 24 24" space="preserve")
       use(xlink:href="#icon-audio-wave")
-  button(:class="[$style.footerLeftControlBtn, { [$style.active]: isShowLrcSelectContent }]" :aria-label="$t('lyric__select')" @click="toggleVisibleLrc")
-    svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="95%" viewBox="0 0 24 24" space="preserve")
-      use(xlink:href="#icon-text")
+  // Luminous Harmonic: 歌词/播放列表 视图切换 — 纯图标三线设计:
+  // 歌词 = 上下短中间长三条线; 播放列表 = 上中下等长三条线 (图标指向点击后将切换到的视图)
+  button(:class="[$style.footerLeftControlBtn, { [$style.active]: detailView === 'playlist' }]" :aria-label="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" :title="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" @click="toggleDetailView")
+    svg(v-if="detailView !== 'playlist'" version="1.1" xmlns="http://www.w3.org/2000/svg" width="95%" viewBox="0 0 24 24" space="preserve")
+      g(fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round")
+        line(x1="8" y1="6" x2="16" y2="6")
+        line(x1="4" y1="12" x2="20" y2="12")
+        line(x1="8" y1="18" x2="16" y2="18")
+    svg(v-else version="1.1" xmlns="http://www.w3.org/2000/svg" width="95%" viewBox="0 0 24 24" space="preserve")
+      g(fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round")
+        line(x1="4" y1="6" x2="20" y2="6")
+        line(x1="4" y1="12" x2="20" y2="12")
+        line(x1="4" y1="18" x2="20" y2="18")
   button(:class="[$style.footerLeftControlBtn, {[$style.active]: isShowPlayComment}]" :aria-label="$t('comment__show')" @click="toggleVisibleComment")
     svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="95%" viewBox="0 0 24 24" space="preserve")
       use(xlink:href="#icon-comment")
@@ -30,15 +40,14 @@ import { ref } from '@common/utils/vueTools'
 import { useI18n } from '@renderer/plugins/i18n'
 
 import {
-  isShowLrcSelectContent,
   isShowPlayComment,
   playMusicInfo,
 } from '@renderer/store/player/state'
 import {
-  setShowPlayLrcSelectContentLrc,
   setShowPlayComment,
 } from '@renderer/store/player/action'
 
+import { detailView, toggleDetailView } from '../detailViewState'
 import useNextTogglePlay from '@renderer/utils/compositions/useNextTogglePlay'
 import useToggleDesktopLyric from '@renderer/utils/compositions/useToggleDesktopLyric'
 import { dialog } from '@renderer/plugins/Dialog'
@@ -48,13 +57,7 @@ import { appSetting, saveMediaDeviceId, setEnableAudioVisualization } from '@ren
 export default {
   setup() {
     const t = useI18n()
-    // const setting = useRefGetter('setting')
-    // const setAudioVisualization = useCommit('setAudioVisualization')
-    // const saveMediaDeviceId = useCommit('setMediaDeviceId')
 
-    const toggleVisibleLrc = () => {
-      setShowPlayLrcSelectContentLrc(!isShowLrcSelectContent.value)
-    }
     const toggleVisibleComment = () => {
       setShowPlayComment(!isShowPlayComment.value)
     }
@@ -88,8 +91,8 @@ export default {
 
     return {
       appSetting,
-      isShowLrcSelectContent,
-      toggleVisibleLrc,
+      detailView,
+      toggleDetailView,
       isShowPlayComment,
       toggleVisibleComment,
       nextTogglePlayName,
@@ -123,9 +126,14 @@ export default {
     text-shadow: var(--detail-font-shadow, 0 1px 3px rgb(0 0 0 / .7));
   }
 
+  // Luminous Harmonic: 视图切换按钮激活态 — 主题色描边+浅底 (与其他按钮的 active 风格一致)
+  .viewToggleActive {
+    color: var(--color-primary) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 40%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  }
+
   .footerLeftControlBtn {
-    // width: 18px;
-    // height: 18px;
     position: relative;
     opacity: .85;
     cursor: pointer;

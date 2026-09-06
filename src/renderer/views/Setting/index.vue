@@ -18,12 +18,16 @@
       <ul :class="$style.tocList" role="toolbar">
         <li v-for="h2 in filteredTocList" :key="h2.id" :class="$style.tocListItem" role="presentation">
           <h2
-            :class="[$style.tocH2, {[$style.active]: avtiveComponentName == h2.id }]"
-            role="tab" :aria-selected="avtiveComponentName == h2.id"
+            :class="[$style.tocH2, {[$style.active]: activeCategoryId == h2.id }]"
+            role="tab" :aria-selected="activeCategoryId == h2.id"
             :aria-label="h2.title" tabindex="0" ignore-tip @click="toggleTab(h2.id)" @keydown.enter.space.prevent="toggleTab(h2.id)"
           >
-            <svg-icon v-if="avtiveComponentName == h2.id" name="angle-right-solid" :class="$style.activeIcon" />
+            <!-- Luminous Harmonic: 分类图标 (参照主流软件设置页) -->
+            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" :class="$style.tocIcon" aria-hidden="true">
+              <use :xlink:href="h2.icon" />
+            </svg>
             {{ h2.title }}
+            <svg-icon v-if="activeCategoryId == h2.id" name="angle-right-solid" :class="$style.activeIcon" />
           </h2>
           <button v-if="settingQuery && h2.matchText" type="button" :class="$style.searchMatch" @click="toggleTab(h2.id)">
             {{ h2.matchCount }} 项：{{ h2.matchText }}
@@ -42,8 +46,8 @@
       </ul>
     </div>
     <div ref="dom_content_ref" class="scroll" :class="$style.setting">
-      <dl>
-        <component :is="avtiveComponentName" />
+      <dl :key="activeCategoryId" :class="$style.categoryAnim">
+        <component v-for="name in avtiveComponents" :key="name" :is="name" />
         <!-- <SettingBasic />
         <SettingPlay />
         <SettingPlayDetail />
@@ -71,7 +75,8 @@ import { useI18n } from '@renderer/plugins/i18n'
 import { messages } from '@root/lang'
 import { useRoute } from '@common/utils/vueRouter'
 
-import SettingBasic from './components/SettingBasic.vue'
+import SettingGeneral from './components/SettingGeneral.vue'
+import SettingAppearance from './components/SettingAppearance.vue'
 import SettingPlay from './components/SettingPlay.vue'
 import SettingPlayDetail from './components/SettingPlayDetail.vue'
 import SettingDesktopLyric from './components/SettingDesktopLyric.vue'
@@ -91,7 +96,8 @@ import SettingAbout from './components/SettingAbout.vue'
 export default {
   name: 'Setting',
   components: {
-    SettingBasic,
+    SettingGeneral,
+    SettingAppearance,
     SettingPlay,
     SettingPlayDetail,
     SettingDesktopLyric,
@@ -115,24 +121,19 @@ export default {
     const dom_content_ref = ref(null)
     const dom_search_ref = ref(null)
 
+    // Luminous Harmonic: 设置页重构 — 16 组归纳为 10 组, 每组可堆叠多个设置组件
     const tocList = computed(() => {
       return [
-        { id: 'SettingBasic', title: t('setting__basic'), searchPrefixes: ['setting__basic', 'setting__play_timeout', 'theme_'] },
-        { id: 'SettingPlay', title: t('setting__play'), searchPrefixes: ['setting__play', 'setting__player', 'play_timeout'] },
-        { id: 'SettingPlayDetail', title: t('setting__play_detail'), searchPrefixes: ['setting__play_detail', 'play_detail'] },
-        { id: 'SettingDesktopLyric', title: t('setting__desktop_lyric'), searchPrefixes: ['setting__desktop_lyric', 'desktop_lyric'] },
-        { id: 'SettingSearch', title: t('setting__search'), searchPrefixes: ['setting__search'] },
-        { id: 'SettingList', title: t('setting__list'), searchPrefixes: ['setting__list', 'setting__dislike'] },
-        { id: 'SettingDownload', title: t('setting__download'), searchPrefixes: ['setting__download'] },
-        { id: 'SettingHotKey', title: t('setting__hot_key'), searchPrefixes: ['setting__hot_key', 'hotkey'] },
-        { id: 'SettingSync', title: t('setting__sync'), searchPrefixes: ['setting__sync'] },
-        { id: 'SettingOpenAPI', title: t('setting__open_api'), searchPrefixes: ['setting__open_api', 'open_api', 'user_api'] },
-        { id: 'SettingNetwork', title: t('setting__network'), searchPrefixes: ['setting__network'] },
-        { id: 'SettingOdc', title: t('setting__odc'), searchPrefixes: ['setting__odc'] },
-        { id: 'SettingBackup', title: t('setting__backup'), searchPrefixes: ['setting__backup'] },
-        { id: 'SettingOther', title: t('setting__other'), searchPrefixes: ['setting__other'] },
-        { id: 'SettingUpdate', title: t('setting__update'), searchPrefixes: ['setting__update'] },
-        { id: 'SettingAbout', title: t('setting__about'), searchPrefixes: ['setting__about'] },
+        { id: 'general', icon: 'logo', title: t('setting__general'), components: ['SettingGeneral'], searchPrefixes: ['setting__basic_show', 'setting__basic_animation', 'setting__basic_start', 'setting__basic_to_tray', 'setting__play_timeout', 'setting__basic_lang', 'setting__basic_sourcename', 'setting__other_tray_theme', 'tray_enable'] },
+        { id: 'appearance', icon: 'album', title: t('setting__appearance'), components: ['SettingAppearance'], searchPrefixes: ['setting__basic_theme', 'setting__basic_window', 'setting__basic_font', 'setting__basic_control', 'setting__basic_playbar', 'theme_', 'setting__basic_source_status'] },
+        { id: 'play', icon: 'play', title: t('setting__play'), components: ['SettingPlay', 'SettingPlayDetail'], searchPrefixes: ['setting__play', 'setting__player', 'setting__basic_source', 'setting__basic_play_quality', 'setting__play_detail', 'play_detail', 'play_timeout', 'user_api', 'open_api'] },
+        { id: 'desktop_lyric', icon: 'desktop', title: t('setting__desktop_lyric'), components: ['SettingDesktopLyric'], searchPrefixes: ['setting__desktop_lyric', 'desktop_lyric'] },
+        { id: 'search_list', icon: 'search-2', title: t('setting__search_list'), components: ['SettingSearch', 'SettingList', 'SettingOdc'], searchPrefixes: ['setting__search', 'setting__list', 'setting__odc', 'setting__dislike'] },
+        { id: 'download', icon: 'download-2', title: t('setting__download'), components: ['SettingDownload'], searchPrefixes: ['setting__download'] },
+        { id: 'hot_key', icon: 'check', title: t('setting__hot_key'), components: ['SettingHotKey'], searchPrefixes: ['setting__hot_key', 'hotkey'] },
+        { id: 'service', icon: 'refresh', title: t('setting__service_sync'), components: ['SettingSync', 'SettingOpenAPI', 'SettingNetwork'], searchPrefixes: ['setting__sync', 'setting__open_api', 'setting__network', 'open_api', 'user_api'] },
+        { id: 'data', icon: 'sdCard', title: t('setting__data_backup'), components: ['SettingBackup', 'SettingOther'], searchPrefixes: ['setting__backup', 'setting__other', 'setting__dislike'] },
+        { id: 'about', icon: 'comment', title: t('setting__about_update'), components: ['SettingUpdate', 'SettingAbout'], searchPrefixes: ['setting__update', 'setting__about'] },
       ]
     })
 
@@ -164,9 +165,31 @@ export default {
       }).filter(Boolean)
     })
 
-    const avtiveComponentName = ref(route.query.name && tocList.value.some(t => t.id == route.query.name)
-      ? route.query.name
+    // Luminous Harmonic: 深链映射 — 旧组件名 (SettingBasic 等) 自动映射到新分类 id
+    const LEGACY_ID_MAP = {
+      SettingBasic: 'general',
+      SettingPlay: 'play',
+      SettingPlayDetail: 'play',
+      SettingDesktopLyric: 'desktop_lyric',
+      SettingSearch: 'search_list',
+      SettingList: 'search_list',
+      SettingOdc: 'search_list',
+      SettingDownload: 'download',
+      SettingHotKey: 'hot_key',
+      SettingSync: 'service',
+      SettingOpenAPI: 'service',
+      SettingNetwork: 'service',
+      SettingBackup: 'data',
+      SettingOther: 'data',
+      SettingUpdate: 'about',
+      SettingAbout: 'about',
+    }
+    const activeCategoryId = ref(route.query.name
+      ? (LEGACY_ID_MAP[route.query.name] ?? (tocList.value.some(t2 => t2.id == route.query.name) ? route.query.name : tocList.value[0].id))
       : tocList.value[0].id)
+    const avtiveComponents = computed(() => {
+      return tocList.value.find(t2 => t2.id == activeCategoryId.value)?.components ?? []
+    })
 
     let searchHighlightTimer
     const focusSearchMatch = query => {
@@ -188,7 +211,7 @@ export default {
     }
 
     const toggleTab = id => {
-      avtiveComponentName.value = id
+      activeCategoryId.value = id
       void nextTick(() => {
         if (settingQuery.value) focusSearchMatch(settingQuery.value)
         else dom_content_ref.value?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -199,7 +222,7 @@ export default {
       if (!query) return
       const first = filteredTocList.value[0]
       if (!first) return
-      avtiveComponentName.value = first.id
+      activeCategoryId.value = first.id
       focusSearchMatch(query)
     })
 
@@ -218,7 +241,8 @@ export default {
       settingQuery,
       dom_search_ref,
       filteredTocList,
-      avtiveComponentName,
+      activeCategoryId,
+      avtiveComponents,
       dom_content_ref,
       toggleTab,
     }
@@ -360,7 +384,18 @@ export default {
   border-radius: @radius-border;
   box-shadow: 0 0 0 3px var(--color-primary-alpha-100);
 }
+.tocIcon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  fill: currentColor;
+  opacity: .85;
+}
 .tocH2 {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   line-height: 1.5;
   .mixin-ellipsis-1();
   font-size: 13px;
@@ -386,10 +421,15 @@ export default {
   }
 }
 .activeIcon {
+  flex: none;
   height: .9em;
   width: .9em;
-  margin-left: -0.45em;
-  vertical-align: -0.05em;
+  margin-right: 2px;
+  animation: toc-arrow-in 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes toc-arrow-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 // .tocH3 {
 //   font-size: 13px;
@@ -404,6 +444,15 @@ export default {
 // .tocSubListItem {
 //   padding-top: 10px;
 // }
+
+// Luminous Harmonic: 分类切换快速淡入 (120ms 仅透明度, 无位移——内部切换不要强过渡)
+.categoryAnim {
+  animation: category-fade-in 120ms ease-out;
+}
+@keyframes category-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 .setting {
   padding: 0 15px 15px;

@@ -1,4 +1,5 @@
 import { BrowserWindow, app, dialog, session, screen } from 'electron'
+import { handleLxWeOnSession } from '@main/modules/wallpaperEngine'
 import { appendFileSync } from 'node:fs'
 import path from 'node:path'
 import { createTaskBarButtons, getWindowSizeInfo } from './utils'
@@ -85,6 +86,8 @@ export const createWindow = () => {
 
   const { shouldUseDarkColors, theme } = global.lx.theme
   const ses = session.fromPartition('persist:win-main')
+  // Luminous Harmonic: 注册 Wallpaper Engine 壁纸协议到主窗口会话
+  handleLxWeOnSession(ses)
   const proxy = getProxy()
   setSesProxy(ses, proxy?.host, proxy?.port)
 
@@ -100,8 +103,10 @@ export const createWindow = () => {
     hasShadow: global.envParams.cmdParams.dt,
     icon: path.join(global.staticPath, 'images/lx-music.ico'),
     // enableRemoteModule: false,
-    resizable: false,
-    maximizable: false,
+    // Luminous Harmonic: 开启原生 resizable/maximizable —
+    // 边缘拖拽调大小 / 拖动区双击最大化均为系统原生行为; 此前 false 导致只能伪最大化(四周留白)
+    resizable: true,
+    maximizable: true,
     fullscreenable: true,
     roundedCorners: global.envParams.cmdParams.dt,
     show: false,
@@ -115,6 +120,10 @@ export const createWindow = () => {
       enableWebSQL: false,
       webgl: false,
       spellcheck: false, // 禁用拼写检查器
+      // Luminous Harmonic: 音乐播放器窗口在后台也必须全速运行 —
+      // 切歌过渡的音量渐变 (淡入淡出/交叉淡化) 依赖定时器驱动, 后台节流会把渐变冻在半路
+      // (表现为: 歌曲切完后音量极小, 拖动进度条才恢复)
+      backgroundThrottling: false,
     },
   }
   if (global.envParams.cmdParams.dt) options.backgroundColor = theme.colors['--color-primary-light-1000']
@@ -206,6 +215,14 @@ export const toggleHide = () => {
   browserWindow.isVisible()
     ? browserWindow.hide()
     : browserWindow.show()
+}
+export const toggleMaximize = () => {
+  if (!browserWindow) return
+  // 透明无边框窗口上 isMaximized() 可能恒为 false, 改用窗口尺寸 vs 工作区尺寸判断
+  const { workAreaSize } = screen.getPrimaryDisplay()
+  const bounds = browserWindow.getBounds()
+  const maximized = bounds.width >= workAreaSize.width - 2 && bounds.height >= workAreaSize.height - 2
+  maximized ? browserWindow.unmaximize() : browserWindow.maximize()
 }
 export const toggleMinimize = () => {
   if (!browserWindow) return

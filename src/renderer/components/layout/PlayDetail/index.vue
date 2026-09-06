@@ -42,11 +42,6 @@ transition(
           h2.songName {{ musicInfo.name }}
           .singer.linklike(v-if="musicInfo.singer" :title="$t('player__detail_search_singer')" @click.stop="searchKeyword(musicInfo.singer)") {{ musicInfo.singer }}
           .album.linklike(v-if="musicInfo.album" :title="$t('player__detail_search_album')" @click.stop="searchKeyword(musicInfo.album)") {{ musicInfo.album }}
-      //- Luminous Harmonic: 右栏视图切换（Pure-music 两态循环: 歌词/播放列表; 评论视图由评论按钮进出）
-      button.viewToggleBtn(:aria-label="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" :title="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" @click="toggleDetailView")
-        svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" space="preserve")
-          use(v-if="detailView !== 'playlist'" xlink:href="#icon-musicFile")
-          use(v-else xlink:href="#icon-text")
       //- 右栏：歌词/播放列表/评论 三态视图（评论改为视图内嵌，不再 absolute 叠加遮挡歌词）
       transition(enter-active-class="animated fadeIn" leave-active-class="animated fadeOut" mode="out-in")
         LyricPlayer(v-if="visibled && detailView === 'lyric'" :key="'lyric-' + (musicInfo.id || 'no-music')")
@@ -78,6 +73,7 @@ import {
 import { useRouter } from '@common/utils/vueRouter'
 import LyricPlayer from './LyricPlayer.vue'
 import PlayBar from './PlayBar.vue'
+import { detailView as sharedDetailView, toggleDetailView, useDetailCommentViewSync } from './detailViewState'
 import DetailPlaylist from './components/DetailPlaylist.vue'
 import MusicComment from './components/MusicComment/index.vue'
 import ControlBtnsLeftHeader from './ControlBtnsLeftHeader.vue'
@@ -103,21 +99,10 @@ export default {
     const detailEnterFrom = 'detail-slide-enter-from'
     const detailLeaveActive = 'detail-slide-leave-active'
     const detailLeaveTo = 'detail-slide-leave-to'
-    // Luminous Harmonic: 右栏视图状态（歌词/播放列表 两态循环, 评论视图由评论按钮进出）
-    const detailView = ref('lyric')
-    let lastMainView = 'lyric'
-    const toggleDetailView = () => {
-      // 评论视图下点击切回歌词；其余在 歌词/播放列表 两态间循环
-      detailView.value = detailView.value === 'lyric' ? 'playlist' : 'lyric'
-    }
-    watch(isShowPlayComment, show => {
-      if (show) {
-        if (detailView.value !== 'comment') lastMainView = detailView.value
-        detailView.value = 'comment'
-      } else if (detailView.value === 'comment') {
-        detailView.value = lastMainView
-      }
-    })
+    // Luminous Harmonic: 右栏视图状态已提取到 detailViewState 共享模块
+    // (底部工具栏的切换按钮与这里共用同一状态)
+    const detailView = sharedDetailView
+    useDetailCommentViewSync()
     const detailStyle = computed(() => ({
       '--detail-background-mode': appSetting['playDetail.backgroundMode'],
       // .container 内部元素 (bg/artwork/歌词) 需要 --detail-accent-color 恒存在:
@@ -732,35 +717,6 @@ export default {
 
 // Luminous Harmonic: 右栏视图切换按钮（歌词/播放列表两态循环）— 与 followBtn 同款玻璃小圆钮
 // top 74px = 顶栏 60px + 14px，对齐右栏顶部，避开顶栏右侧的窗口控制按钮
-.viewToggleBtn {
-  position: absolute;
-  top: 74px;
-  right: 12px;
-  z-index: 4;
-  width: 28px;
-  height: 28px;
-  padding: 6px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 42%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--glass-card, transparent) 88%, transparent);
-  color: var(--color-primary);
-  box-shadow: 0 4px 14px rgb(0 0 0 / .14);
-  opacity: .88;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity @transition-fast, transform @transition-fast, background-color @transition-fast;
-
-  &:hover {
-    opacity: 1;
-    transform: translateY(-1px);
-    background: var(--glass-card-hover, transparent);
-  }
-
-  svg { width: 100%; height: 100%; fill: currentColor; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .bg { animation: none; }
   .bgCoverBlur,

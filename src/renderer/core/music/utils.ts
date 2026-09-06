@@ -17,11 +17,30 @@ const getOtherSourcePromises = new Map()
 const otherSourceCache = new Map<LX.Music.MusicInfo | LX.Download.ListItem, LX.Music.MusicInfoOnline[]>()
 export const existTimeExp = /\[\d{1,2}:.*\d{1,4}\]/
 
+// Luminous Harmonic: 换源匹配结果持久化 — 导入源(如汽水)的歌曲每次播放都要全源搜索
+// (最多 15s), 匹配成功后写入 localStorage, 重启后直接命中, 省去整次搜索
+const OTHER_SOURCE_MATCH_CACHE_KEY = 'lx_other_source_match_cache_v2'
+const OTHER_SOURCE_MATCH_CACHE_LIMIT = 300
+const otherSourceMatchCache = new Map<string, LX.Music.MusicInfoOnline[]>()
+try {
+  const saved = JSON.parse(window.localStorage.getItem(OTHER_SOURCE_MATCH_CACHE_KEY) ?? '[]') as Array<[string, LX.Music.MusicInfoOnline[]]>
+  saved.forEach(([k, v]) => { otherSourceMatchCache.set(k, v) })
+} catch (_) { /* 缓存损坏时忽略 */ }
+
+const saveOtherSourceMatchCache = (key: string, list: LX.Music.MusicInfoOnline[]) => {
+  if (!list.length) return
+  if (otherSourceMatchCache.size >= OTHER_SOURCE_MATCH_CACHE_LIMIT) {
+    const oldest = otherSourceMatchCache.keys().next().value
+    if (oldest != null) otherSourceMatchCache.delete(oldest)
+  }
+  otherSourceMatchCache.delete(key)
+  otherSourceMatchCache.set(key, list) // 重插保持 LRU 顺序
+  try {
+    window.localStorage.setItem(OTHER_SOURCE_MATCH_CACHE_KEY, JSON.stringify(Array.from(otherSourceMatchCache.entries())))
+  } catch (_) { /* 存储满时忽略 */ }
+}
+
 export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false): Promise<LX.Music.MusicInfoOnline[]> => {
-  // if (!isRefresh && musicInfo.id) {
-  //   const cachedInfo = await getOtherSourceFromStore(musicInfo.id)
-  //   if (cachedInfo.length) return cachedInfo
-  // }
   if (otherSourceCache.has(musicInfo)) return otherSourceCache.get(musicInfo)!
   let key: string
   let searchMusicInfo: {
@@ -52,15 +71,25 @@ export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.
   }
   if (getOtherSourcePromises.has(key)) return getOtherSourcePromises.get(key)
 
+  // Luminous Harmonic: 命中持久化匹配缓存 → 跳过全源搜索 (核心提速点)
+  if (!isRefresh) {
+    const persisted = otherSourceMatchCache.get(key)
+    if (persisted?.length) {
+      otherSourceCache.set(musicInfo, persisted)
+      return persisted
+    }
+  }
+
   const promise = new Promise<LX.Music.MusicInfoOnline[]>((resolve, reject) => {
     let timeout: null | NodeJS.Timeout = setTimeout(() => {
       timeout = null
       reject(new Error('find music timeout'))
-    }, 15_000)
+    }, 10_000)
     musicSdk.findMusic(searchMusicInfo).then((otherSource) => {
       if (otherSourceCache.size > 10) otherSourceCache.clear()
       const source = otherSource.map(toNewMusicInfo) as LX.Music.MusicInfoOnline[]
       otherSourceCache.set(musicInfo, source)
+      saveOtherSourceMatchCache(key, source)
       resolve(source)
     }).catch(reject).finally(() => {
       if (timeout) clearTimeout(timeout)
@@ -263,6 +292,22 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
     break
   }
   if (!musicInfo || !itemQuality) throw new Error(window.i18n.t('toggle_source_failed'))
+
+  // Luminous Harmonic: 先一次性扫描全部候选的 URL 缓存 — 原逻辑只看第一个候选的
+  // 缓存, 会错过排在后面但已有现成缓存 URL 的候选 (缓存命中是即时的, 省一次网络探测)
+  if (!isRefresh) {
+    for (const candidate of musicInfos) {
+      if (retryedSource.includes(candidate.source) || !assertApiSupport(candidate.source)) continue
+      const candidateQuality = quality ?? getPlayQuality(appSetting['player.playQuality'], candidate)
+      if (!candidate.meta._qualitys[candidateQuality]) continue
+      // eslint-disable-next-line no-await-in-loop
+      const cachedUrl = await getStoreMusicUrl(candidate, candidateQuality)
+      if (cachedUrl) {
+        onToggleSource(candidate)
+        return { url: cachedUrl, musicInfo: candidate, quality: candidateQuality, isFromCache: true }
+      }
+    }
+  }
 
   const cachedUrl = await getStoreMusicUrl(musicInfo, itemQuality)
   if (cachedUrl && !isRefresh) return { url: cachedUrl, musicInfo, quality: itemQuality, isFromCache: true }

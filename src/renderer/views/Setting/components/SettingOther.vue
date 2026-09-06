@@ -7,12 +7,6 @@ dd
       svg-icon(class="help-icon" name="help-circle-outline" :aria-label="$t('setting__other_transparent_window_tip')")
 
 dd
-  h3#other_tray_theme {{ $t('setting__other_tray_theme') }}
-  div
-    base-checkbox.gap-left(
-      v-for="item in trayThemeList" :id="'setting_tray_theme_' + item.id" :key="item.id" :model-value="appSetting['tray.themeId']" name="setting_tray_theme"
-      need :label="item.label" :value="item.id" @update:model-value="updateSetting({'tray.themeId': $event})")
-dd
   h3#other_resource_cache
     | {{ $t('setting__other_resource_cache') }}
     svg-icon(class="help-icon" name="help-circle-outline" :aria-label="$t('setting__other_resource_cache_tip')")
@@ -68,7 +62,7 @@ dd
 </template>
 
 <script>
-import { ref, computed, onBeforeUnmount } from '@common/utils/vueTools'
+import { ref, onBeforeUnmount } from '@common/utils/vueTools'
 import {
   clearCache, getCacheSize,
   getOtherSourceCount, clearOtherSource,
@@ -83,7 +77,6 @@ import { appSetting, updateSetting } from '@renderer/store/setting'
 import { overwriteListFull } from '@renderer/store/list/listManage'
 import { dislikeRuleCount } from '@renderer/store/dislikeList'
 import DislikeListModal from './DislikeListModal.vue'
-import { TRAY_AUTO_ID } from '@common/constants'
 
 export default {
   name: 'SettingOther',
@@ -95,15 +88,6 @@ export default {
     let isActive = true
     onBeforeUnmount(() => {
       isActive = false
-    })
-
-    const trayThemeList = computed(() => {
-      return [
-        { id: 0, name: 'native', label: t('setting__other_tray_theme_native') },
-        { id: 2, name: 'black', label: t('setting__other_tray_theme_black') },
-        { id: 1, name: 'origin', label: t('setting__other_tray_theme_origin') },
-        { id: TRAY_AUTO_ID, name: 'auto', label: t('setting__other_tray_theme_auto') },
-      ]
     })
 
     const cacheSize = ref('0 B')
@@ -224,7 +208,6 @@ export default {
     return {
       appSetting,
       updateSetting,
-      trayThemeList,
       cacheSize,
       isDisabledResourceCacheClear,
       clearResourceCache,

@@ -31,6 +31,8 @@ const defaultSetting: LX.AppSetting = {
 
   'player.startupAutoPlay': false,
   'player.togglePlayMethod': 'listLoop',
+  // Luminous Harmonic: 切歌过渡 (复刻 pure-music): none 无缝衔接 / fade 淡入淡出 / crossfade 交叉淡化 / smart 智能衔接
+  'player.songTransition': 'none',
   'player.playQuality': '128k',
   'player.isShowTaskProgess': true,
   'player.isShowStatusBarLyric': false,

@@ -6,6 +6,7 @@ import {
   getCurrentTime,
   getDuration,
   setPause, setStop,
+  setSongTransition,
 } from '@renderer/plugins/player'
 
 import useMediaSessionInfo from './useMediaSessionInfo'
@@ -132,6 +133,11 @@ export default () => {
     setStop()
     removePowerSaveBlocker()
   }
+
+  // 切歌过渡模式同步到播放引擎 (复刻 pure-music 切歌过渡)
+  watch(() => appSetting['player.songTransition'], newValue => {
+    setSongTransition(newValue)
+  }, { immediate: true })
 
   watch(() => appSetting['player.togglePlayMethod'], newValue => {
     // setLoopPlay(newValue == 'singleLoop')

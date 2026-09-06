@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { minWindow, closeWindow, setWindowBounds } from '@renderer/utils/ipc'
+import { minWindow, closeWindow } from '@renderer/utils/ipc'
 import { onMounted, onBeforeUnmount, ref, useCssModule } from '@common/utils/vueTools'
 import { isFullscreen } from '@renderer/store'
 import { useWindowMaximize } from '@renderer/utils/compositions/useWindowMaximize'
@@ -47,7 +47,7 @@ const cssModule = useCssModule()
 
 // Luminous Harmonic: max 按钮的"伪最大化"状态 — 复用共享 composable,
 // 这样顶栏双击放大 / 还原 与 这个按钮的 icon 状态 始终保持同步 (单一可信源).
-const { isMaximized, prevBounds, toggleMaximize, centerBounds, getPreset } = useWindowMaximize()
+const { isMaximized, toggleMaximize } = useWindowMaximize()
 
 const handle_focus = () => {
   if (!dom_btns.value) return
@@ -68,27 +68,13 @@ const handle_mouseout = (event) => {
   btn.classList.remove(cssModule.hover)
 }
 
-// Luminous Harmonic: 当用户改 preset 大小 (设置页 windowSizeId) 时, 若正处于伪最大化
-// 则更新 prevBounds, 还原时用新 preset; 同时关闭伪最大化让窗口立即按新大小铺开
-const handle_setting_change = (e) => {
-  if (!isMaximized.value) return
-  const target = centerBounds(getPreset().width, getPreset().height)
-  prevBounds.value = target
-  const sw = window.screen.availWidth || 1707
-  const sh = window.screen.availHeight || 1019
-  setWindowBounds({ x: 0, y: 0, width: sw, height: sh })
-}
-
 onMounted(() => {
   window.app_event.on('focus', handle_focus)
-  // Luminous Harmonic: 监听设置变更 (preset 大小被改) → 同步 prevBounds
-  window.addEventListener('setting_change', handle_setting_change)
   dom_btns.value.addEventListener('mouseover', handle_mouseover)
   dom_btns.value.addEventListener('mouseout', handle_mouseout)
 })
 onBeforeUnmount(() => {
   window.app_event.off('focus', handle_focus)
-  window.removeEventListener('setting_change', handle_setting_change)
   dom_btns.value.removeEventListener('mouseover', handle_mouseover)
   dom_btns.value.removeEventListener('mouseout', handle_mouseout)
 })

@@ -14,6 +14,8 @@ import soundEffect from './soundEffect'
 import openAPI from './openAPI'
 import netease from './netease'
 import qishui from './qishui'
+import kugou from './kugou'
+import qqmusic from './qqmusic'
 import { sendEvent } from '../main'
 
 export * from './app'
@@ -43,6 +45,8 @@ export default () => {
   openAPI()
   netease()
   qishui()
+  kugou()
+  qqmusic()
 
   global.lx.event_app.on('updated_config', (keys, setting) => {
     sendConfigChange(setting)

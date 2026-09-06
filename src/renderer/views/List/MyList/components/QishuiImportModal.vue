@@ -1,5 +1,5 @@
 <template>
-  <material-modal :show="modelValue" bg-close teleport="#view" width="560px" max-height="86%" @close="handleClose">
+  <material-modal frosted :show="modelValue" bg-close teleport="#view" width="680px" max-height="86%" @close="handleClose">
     <main class="scroll" :class="$style.main">
       <header :class="$style.title">
         <h2>{{ $t('qishui__title') }}</h2>
@@ -264,7 +264,19 @@ export default {
         status.value = ''
         error.value = ''
         progress.value = ''
-        void loadQrCode()
+        // Luminous Harmonic: 已保存的 Cookie 仍有效时直接进入歌单列表 (长效会话),
+        // 只有登录失效才走扫码
+        loading.value = true
+        getQishuiLibrary().then((result) => {
+          nickname.value = result.nickname
+          playlists.value = result.playlists
+          selectedIds.value = result.playlists.map(pl => pl.id)
+          phase.value = 'list'
+        }).catch(() => {
+          void loadQrCode()
+        }).finally(() => {
+          loading.value = false
+        })
       } else {
         stopPolling()
       }
@@ -298,14 +310,17 @@ export default {
 @import '@renderer/assets/styles/layout.less';
 
 .main {
-  padding: 15px;
+  padding: 4px 15px 15px;
   min-height: 300px;
 }
 .title {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   text-align: center;
 
   h2 {
+    margin: 0;
+    color: var(--color-primary);
+    letter-spacing: 0.01em;
     word-break: break-all;
   }
 }

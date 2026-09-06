@@ -29,7 +29,7 @@
                   class="list-item" :class="[{ selected: rightClickSelectedIndex == getIndex(item) }, { active: playingId == item.id }]"
                   @click="handleListItemClick($event, getIndex(item))" @contextmenu="handleListItemRightClick($event, getIndex(item))"
                 >
-                  <div :class="$style.cover">
+                  <div v-lazy-pic="item" :class="$style.cover">
                     <div :class="$style.coverFallback">
                       <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 512 512" space="preserve">
                         <use xlink:href="#icon-musicFile" />
@@ -40,8 +40,9 @@
                       :class="$style.coverImg" :aria-label="item.name"
                       @error="$event.target.style.display = 'none'"
                     >
-                    <div v-if="playingId == item.id" :class="$style.playingBadge">
-                      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 287.386 287.386" space="preserve">
+                    <div v-if="playingId == item.id" :class="[$style.playingBadge, { [$style.playingBadgePaused]: !isPlay }]" @click.stop="togglePlay()">
+                      <span v-if="isPlay" :class="$style.equalizer"><i></i><i></i><i></i><i></i></span>
+                      <svg v-else version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="45%" viewBox="0 0 1024 1024" space="preserve">
                         <use xlink:href="#icon-play" />
                       </svg>
                     </div>
@@ -77,7 +78,7 @@
                   class="list-item" :class="[{ selected: rightClickSelectedIndex == getIndex(item) }, { active: playingId == item.id }]"
                   @click="handleListItemClick($event, getIndex(item))" @contextmenu="handleListItemRightClick($event, getIndex(item))"
                 >
-                  <div :class="$style.cover">
+                  <div v-lazy-pic="item" :class="$style.cover">
                     <div :class="$style.coverFallback">
                       <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 512 512" space="preserve">
                         <use xlink:href="#icon-musicFile" />
@@ -88,8 +89,9 @@
                       :class="$style.coverImg" :aria-label="item.name"
                       @error="$event.target.style.display = 'none'"
                     >
-                    <div v-if="playingId == item.id" :class="$style.playingBadge">
-                      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 287.386 287.386" space="preserve">
+                    <div v-if="playingId == item.id" :class="[$style.playingBadge, { [$style.playingBadgePaused]: !isPlay }]" @click.stop="togglePlay()">
+                      <span v-if="isPlay" :class="$style.equalizer"><i></i><i></i><i></i><i></i></span>
+                      <svg v-else version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="45%" viewBox="0 0 1024 1024" space="preserve">
                         <use xlink:href="#icon-play" />
                       </svg>
                     </div>
@@ -138,7 +140,9 @@
 import { clipboardWriteText } from '@common/utils/electron'
 import { assertApiSupport } from '@renderer/store/utils'
 import { ref, computed } from '@common/utils/vueTools'
-import { playMusicInfo } from '@renderer/store/player/state'
+import { loadLazyPic } from '@renderer/utils/lazyPic'
+import { playMusicInfo, isPlay } from '@renderer/store/player/state'
+import { togglePlay } from '@renderer/core/player/action'
 import useList from './useList'
 import useMenu from './useMenu'
 import usePlay from './usePlay'
@@ -148,6 +152,13 @@ import useMusicActions from './useMusicActions'
 import { appSetting } from '@renderer/store/setting'
 export default {
   name: 'MaterialOnlineList',
+  directives: {
+    // Luminous Harmonic: kw/kg 等源数据不带封面, 行挂载时惰性补取 (lazyPic 内置缓存去重)
+    'lazy-pic': {
+      mounted(_el, { value }) { loadLazyPic(value) },
+      updated(_el, { value }) { loadLazyPic(value) },
+    },
+  },
   props: {
     list: {
       type: Array,
@@ -348,6 +359,8 @@ export default {
       playingId,
       locateEnabled,
       locatePlaying,
+      isPlay,
+      togglePlay,
     }
   },
 }
@@ -392,6 +405,35 @@ export default {
   justify-content: center;
   background: color-mix(in srgb, var(--color-primary) 45%, transparent);
   color: #fff;
+  cursor: pointer;
+}
+.playingBadgePaused {
+  background: color-mix(in srgb, rgba(0, 0, 0, 0.45) 60%, transparent);
+}
+
+// 动态律动条 (4 根跳动柱, 交错延迟)
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 40%;
+
+  i {
+    width: 3px;
+    border-radius: 1px;
+    background: currentColor;
+    animation: eq-bar 0.8s ease-in-out infinite;
+
+    &:nth-child(1) { animation-delay: 0s; height: 50%; }
+    &:nth-child(2) { animation-delay: 0.2s; height: 100%; }
+    &:nth-child(3) { animation-delay: 0.4s; height: 65%; }
+    &:nth-child(4) { animation-delay: 0.1s; height: 80%; }
+  }
+}
+
+@keyframes eq-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
 }
 .buttons {
   flex: none;

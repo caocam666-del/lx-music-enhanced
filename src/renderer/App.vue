@@ -2,6 +2,11 @@
   <div id="container" class="view-container">
     <!-- Luminous Harmonic: 自定义壁纸背景层 (z-index:-2, 在流���球后面) -->
     <div id="lx-wallpaper-bg" aria-hidden="true"></div>
+    <!-- Luminous Harmonic: 壁纸模糊底衬层 (z-index:-3) — 方形预览图 (WE 场景/web) 用 contain
+         完整显示时, 两侧透出同一张图的 cover 放大模糊版, 避免"只占中间一条"的空旷感 -->
+    <div id="lx-wallpaper-backdrop" aria-hidden="true"></div>
+    <!-- Luminous Harmonic: Wallpaper Engine 视频壁纸层 (默认隐藏, 应用视频壁纸时显示) -->
+    <video id="lx-wallpaper-video" aria-hidden="true" style="display:none" muted loop playsinline></video>
     <!-- Luminous Harmonic: 流光背景层 (3 个渐变球慢速漂移) -->
     <div id="luminous-bg" aria-hidden="true">
       <div class="blob blob-1"></div>
@@ -56,10 +61,14 @@ import { onMounted, onBeforeUnmount } from '@common/utils/vueTools'
 import { useRouter } from '@common/utils/vueRouter'
 import useApp from '@renderer/core/useApp'
 import { appSetting } from '@renderer/store/setting'
-import { applyWallpaper } from '@renderer/utils/wallpaper'
+import { applyWallpaper, restoreWallpaperEngine } from '@renderer/utils/wallpaper'
 import { isShowPlayerDetail } from '@renderer/store/player/state'
 import { setShowPlayerDetail } from '@renderer/store/player/action'
 import { restartApp } from '@renderer/utils/ipc'
+// Luminous Harmonic: 启动时恢复上次的 Wallpaper Engine 壁纸
+onMounted(() => {
+  restoreWallpaperEngine()
+})
 
 useApp()
 
@@ -97,15 +106,28 @@ const handleGoHomeKey = (e) => {
     void router.push('/search')
   }
 }
+// Luminous Harmonic: 滚动条滚动可见性 — 全局捕获 scroll 事件, 给正在滚动的 .scroll 容器
+// 加 .is-scrolling (滚动条浮现), 停止滚动约 1s 后移除 (样式见 index.less .scroll)
+const scrollTimers = new WeakMap()
+const handleScrollVisibility = (e) => {
+  const el = e.target
+  if (!(el instanceof Element) || !el.classList?.contains('scroll')) return
+  el.classList.add('is-scrolling')
+  const prev = scrollTimers.get(el)
+  if (prev) clearTimeout(prev)
+  scrollTimers.set(el, window.setTimeout(() => { el.classList.remove('is-scrolling') }, 1000))
+}
 onMounted(() => {
   document.getElementById('root').style.display = 'block'
   window.addEventListener('keydown', handleGoHomeKey, true)
+  window.addEventListener('scroll', handleScrollVisibility, true)
   // Luminous Harmonic: 启动时恢复自定义壁纸 (含亮度自适应透明度)
   const savedWallpaper = localStorage.getItem('lx-wallpaper')
   if (savedWallpaper) applyWallpaper(savedWallpaper)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGoHomeKey, true)
+  window.removeEventListener('scroll', handleScrollVisibility, true)
 })
 
 // onBeforeUnmount(() => {
@@ -151,6 +173,16 @@ body {
   animation: none !important;
 }
 
+// Luminous Harmonic: 最大化状态 — 去掉四周透明 padding 与圆角, 完全铺满工作区
+html.lx-maximized.transparent {
+  padding: 0;
+  #body,
+  #root {
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 .transparent {
   background: transparent;
   padding: @shadow-app;
@@ -161,6 +193,9 @@ body {
     box-shadow: 0 0 @shadow-app rgba(0, 0, 0, 0.5);
     border-radius: @radius-border;
   }
+  // Luminous Harmonic: 壁纸/流光层已改为 absolute 定位在 #container 内 (见 luminous.less),
+  // 由 #root 的 overflow:hidden + 圆角自然裁剪 — 不再用 fixed+inset 手工对齐
+  // (fixed 会逃逸 overflow 裁剪, 且 fixed inset+width:100% 会超出窗口边界, 壁纸溢出到软件边界外)
 }
 .disableTransparent {
   background-color: color-mix(in srgb, var(--color-content-background, var(--luminous-bg-base, #111318)) calc(var(--lx-bg-alpha, 1) * 100%), transparent);

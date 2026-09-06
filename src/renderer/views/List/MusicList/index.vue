@@ -20,14 +20,14 @@
       </button>
     </div>
     <!-- Luminous Harmonic: Pure-music 风格歌单列表 — 封面 + 两行文字 + 时长, 无表头 -->
-    <div v-show="displayList.length" ref="dom_listContent" :class="$style.content">
+    <div v-show="displayList.length" ref="dom_listContent" :key="listId" :class="[$style.content, $style.contentFade]">
       <base-virtualized-list v-if="actionButtonsVisible" ref="listRef" :list="displayList" key-name="id" :item-height="listItemHeight" container-class="scroll" content-class="list" @contextmenu.capture="handleListRightClick">
         <template #default="{ item }">
           <div
             class="list-item" :class="[{ selected: rightClickSelectedIndex == getIndex(item) || selectedIndex == getIndex(item) }, { active: playerInfo.isPlayList && playerInfo.playIndex == getIndex(item) }]"
             @click="handleListItemClick($event, getIndex(item))" @contextmenu="handleListItemRightClick($event, getIndex(item))"
           >
-            <div :class="$style.cover">
+            <div v-lazy-pic="item" :class="$style.cover">
               <div :class="$style.coverFallback">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 512 512" space="preserve">
                   <use xlink:href="#icon-musicFile" />
@@ -38,8 +38,9 @@
                 :class="$style.coverImg" :aria-label="item.name"
                 @error="$event.target.style.display = 'none'"
               >
-              <div v-if="playerInfo.isPlayList && playerInfo.playIndex == getIndex(item)" :class="$style.playingBadge">
-                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 287.386 287.386" space="preserve">
+              <div v-if="playerInfo.isPlayList && playerInfo.playIndex == getIndex(item)" :class="[$style.playingBadge, { [$style.playingBadgePaused]: !isPlay }]" @click.stop="togglePlay()">
+                <span v-if="isPlay" :class="$style.equalizer"><i></i><i></i><i></i><i></i></span>
+                <svg v-else version="1.1" xmlns="http://www.w3.org/2000/svg" height="45%" viewBox="0 0 1024 1024" space="preserve">
                   <use xlink:href="#icon-play" />
                 </svg>
               </div>
@@ -68,7 +69,7 @@
             class="list-item" :class="[{ selected: rightClickSelectedIndex == getIndex(item) || selectedIndex == getIndex(item) }, { active: playerInfo.isPlayList && playerInfo.playIndex == getIndex(item) }]"
             @click="handleListItemClick($event, getIndex(item))" @contextmenu="handleListItemRightClick($event, getIndex(item))"
           >
-            <div :class="$style.cover">
+            <div v-lazy-pic="item" :class="$style.cover">
               <div :class="$style.coverFallback">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 512 512" space="preserve">
                   <use xlink:href="#icon-musicFile" />
@@ -79,8 +80,9 @@
                 :class="$style.coverImg" :aria-label="item.name"
                 @error="$event.target.style.display = 'none'"
               >
-              <div v-if="playerInfo.isPlayList && playerInfo.playIndex == getIndex(item)" :class="$style.playingBadge">
-                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 287.386 287.386" space="preserve">
+              <div v-if="playerInfo.isPlayList && playerInfo.playIndex == getIndex(item)" :class="[$style.playingBadge, { [$style.playingBadgePaused]: !isPlay }]" @click.stop="togglePlay()">
+                <span v-if="isPlay" :class="$style.equalizer"><i></i><i></i><i></i><i></i></span>
+                <svg v-else version="1.1" xmlns="http://www.w3.org/2000/svg" height="45%" viewBox="0 0 1024 1024" space="preserve">
                   <use xlink:href="#icon-play" />
                 </svg>
               </div>
@@ -122,7 +124,9 @@
 </template>
 
 <script>
+/* eslint-disable @typescript-eslint/no-unused-vars -- pug 模板中使用的变量/函数 eslint 无法检测 */
 import { computed, ref } from '@common/utils/vueTools'
+import { loadLazyPic } from '@renderer/utils/lazyPic'
 import { clipboardWriteText } from '@common/utils/electron'
 import { assertApiSupport } from '@renderer/store/utils'
 import SearchList from './components/SearchList.vue'
@@ -140,8 +144,18 @@ import useSearch from './useSearch'
 import useListScroll from './useListScroll'
 import useMusicToggle from './useMusicToggle'
 import { appSetting } from '@renderer/store/setting'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { isPlay } from '@renderer/store/player/state' // eslint-disable-line
+import { togglePlay } from '@renderer/core/player/action'
 export default {
   name: 'MusicList',
+  directives: {
+    // Luminous Harmonic: kw 等源歌曲入列表时无封面, 行挂载时惰性补取
+    'lazy-pic': {
+      mounted(_el, { value }) { loadLazyPic(value) },
+      updated(_el, { value }) { loadLazyPic(value) },
+    },
+  },
   components: {
     SearchList,
     MusicSortModal,
@@ -181,6 +195,9 @@ export default {
       isShowSource,
       excludeListIds,
     } = useListInfo({ props, onLoadedList })
+    // Luminous Harmonic: isPlay/togglePlay 用文件顶部的模块级导入 (store 全局播放状态)。
+    // 之前误从 useListInfo 解构 — 但 useListInfo 并不返回这两个值, 解构结果恒为 undefined:
+    // 模板 v-if="isPlay" 恒 false → 播放中也只显示播放三角, @click="togglePlay()" 报错无响应。
 
     // Luminous Harmonic: 歌单内搜索 (客户端过滤) + 索引映射 —
     // displayList 为过滤后的展示列表; 所有交互索引通过 getIndex 映射回原始列表
@@ -349,7 +366,12 @@ export default {
       listRef.value.scrollTo(0, true)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pug 模板使用
     return {
+      // Luminous Harmonic: 模块级导入的 store 全局播放状态 (修复恒 undefined 导致的三角恒显/点击无效)
+      isPlay,
+      togglePlay,
+
       listItemHeight,
       handleListItemClick,
       selectedList,
@@ -490,6 +512,7 @@ export default {
   height: 100%;
   object-fit: cover;
 }
+// Luminous Harmonic: 播放中封面叠加层 — 播放中显示动态律动条, 暂停显示播放三角
 .playingBadge {
   position: absolute;
   inset: 0;
@@ -498,6 +521,35 @@ export default {
   justify-content: center;
   background: color-mix(in srgb, var(--color-primary) 45%, transparent);
   color: #fff;
+  cursor: pointer;
+}
+.playingBadgePaused {
+  background: color-mix(in srgb, rgba(0, 0, 0, 0.45) 60%, transparent);
+}
+
+// 动态律动条 (4 根跳动柱)
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 40%;
+
+  i {
+    width: 3px;
+    border-radius: 1px;
+    background: currentColor;
+    animation: eq-bar 0.8s ease-in-out infinite;
+
+    &:nth-child(1) { animation-delay: 0s; height: 50%; }
+    &:nth-child(2) { animation-delay: 0.2s; height: 100%; }
+    &:nth-child(3) { animation-delay: 0.4s; height: 65%; }
+    &:nth-child(4) { animation-delay: 0.1s; height: 80%; }
+  }
+}
+
+@keyframes eq-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
 }
 .info {
   flex: 1 1 auto;
@@ -604,6 +656,14 @@ export default {
   svg { width: 16px; height: 16px; fill: currentColor; }
   &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
   &:disabled { opacity: .4; cursor: default; }
+}
+// Luminous Harmonic: 切换歌单快速淡入 (120ms, 不抢眼)
+.contentFade {
+  animation: content-fade-in 120ms ease-out;
+}
+@keyframes content-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .content {
   min-height: 0;

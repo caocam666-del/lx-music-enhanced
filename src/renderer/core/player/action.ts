@@ -1,4 +1,4 @@
-import { isEmpty, setPause, setPlay, setResource, setStop } from '@renderer/plugins/player'
+import { isEmpty, setPause, setPlay, setResource, setStop, setCrossfadeRequestHandler } from '@renderer/plugins/player'
 import { isPlay, playedList, playInfo, playMusicInfo, tempPlayList, musicInfo as _musicInfo } from '@renderer/store/player/state'
 import {
   getList,
@@ -131,6 +131,17 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   if (!force && !diffCurrentMusicInfo(musicInfo)) return
   if (cancelDelayRetry) cancelDelayRetry()
   gettingUrlId = createGettingUrlId(musicInfo)
+  // 切歌过渡(交叉淡化): 上一首歌结尾时已预取好下一首的 URL, 直接使用避免二次解析
+  // (二次解析既浪费请求, 也可能拿到不同临时 URL 导致影子元素无法无缝接管)
+  if (!isRefresh && preloadedNext && musicInfo.id === preloadedNext.id) {
+    const url = preloadedNext.url
+    preloadedNext = null
+    setResource(url)
+    gettingUrlId = ''
+    clearLoadTimeout()
+    return
+  }
+  preloadedNext = null
   void getMusicPlayUrl(musicInfo, isRefresh).then((url) => {
     if (!url) return
     setResource(url)
@@ -368,6 +379,25 @@ export const getNextPlayMusicInfo = async(): Promise<LX.Player.PlayMusicInfo | n
   return nextPlayMusicInfo
 }
 
+// ==================== 切歌过渡 (交叉淡化预载) ====================
+let preloadedNext: { id: string, url: string, playMusicInfo: LX.Player.PlayMusicInfo } | null = null
+setCrossfadeRequestHandler(async() => {
+  const next = await getNextPlayMusicInfo()
+  if (!next || next.musicInfo.id === playMusicInfo.musicInfo?.id) return null // 无下一首/单曲循环 → 不做交叉
+  // 注意: 必须用 getMusicUrl 而非 getMusicPlayUrl —
+  // 后者的 diffCurrentMusicInfo 守卫带 "|| isPlay.value", 播放中恒为 true, 预载结果会被直接丢弃
+  const url = await getMusicUrl({
+    musicInfo: next.musicInfo,
+    allowToggleSource: false,
+    onToggleSource(mInfo) {
+      void mInfo
+    },
+  })
+  if (!url) return null
+  preloadedNext = { id: next.musicInfo.id, url, playMusicInfo: next }
+  return url
+})
+
 const handlePlayNext = (playMusicInfo: LX.Player.PlayMusicInfo) => {
   // pause()
   setPlayMusicInfo(playMusicInfo.listId, playMusicInfo.musicInfo, playMusicInfo.isTempPlay)
@@ -380,6 +410,14 @@ const handlePlayNext = (playMusicInfo: LX.Player.PlayMusicInfo) => {
  */
 export const playNext = async(isAutoToggle = false): Promise<void> => {
   console.log('skip next', isAutoToggle)
+  // 切歌过渡: 交叉淡化/智能衔接在结尾已预载下一首并提前交叠播放 —
+  // 自动切歌时必须使用预载时解析出的那一首 (它已在播前奏),
+  // 否则这里的二次解析可能选出不同的歌曲/导致影子元素被重载
+  if (isAutoToggle && preloadedNext?.playMusicInfo) {
+    handlePlayNext(preloadedNext.playMusicInfo)
+    return
+  }
+  preloadedNext = null
   if (tempPlayList.length) { // 如果稍后播放列表存在歌曲则直接播放改列表的歌曲
     const playMusicInfo = tempPlayList[0]
     removeTempPlayList(0)

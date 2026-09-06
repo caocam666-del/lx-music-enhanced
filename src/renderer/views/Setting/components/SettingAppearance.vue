@@ -1,18 +1,5 @@
 <template lang="pug">
-dt#basic {{ $t('setting__basic') }}
-dd
-  div
-    .gap-top
-      base-checkbox(id="setting_show_animate" :model-value="appSetting['common.isShowAnimation']" :label="$t('setting__basic_show_animation')" @update:model-value="updateSetting({'common.isShowAnimation': $event})")
-    .gap-top
-      base-checkbox(id="setting_animate" :disabled="!appSetting['common.isShowAnimation']" :model-value="appSetting['common.randomAnimate']" :label="$t('setting__basic_animation')" @update:model-value="updateSetting({'common.randomAnimate': $event})")
-    .gap-top
-      base-checkbox(id="setting_start_in_fullscreen" :model-value="appSetting['common.startInFullscreen']" :label="$t('setting__basic_start_in_fullscreen')" @update:model-value="updateSetting({'common.startInFullscreen': $event})")
-    .gap-top
-      base-checkbox(id="setting_to_tray" :model-value="appSetting['tray.enable']" :label="$t('setting__basic_to_tray')" @update:model-value="updateSetting({'tray.enable': $event})")
-    .p.gap-top
-      base-btn.btn(min @click="isShowPlayTimeoutModal = true") {{ $t('setting__play_timeout')}} {{ timeLabel ? ` (${timeLabel})` : '' }}
-
+dt#appearance {{ $t('setting__appearance') }}
 dd
   h3#basic_theme {{ $t('setting__basic_theme') }}
   div
@@ -36,20 +23,6 @@ dd
         svg-icon(name="angle-right-solid" :class="$style.activeIcon")
 
 dd
-  h3#basic_source {{ $t('setting__basic_source') }}
-  div
-    .gap-top(v-for="item in apiSources" :key="item.id")
-      base-checkbox(
-        :id="`setting_api_source_${item.id}`" name="setting_api_source"
-        need :model-value="appSetting['common.apiSource']" :disabled="item.disabled" :value="item.id" :aria-label="item.label" @update:model-value="updateSetting({'common.apiSource': $event})")
-        span(:class="$style.sourceLabel")
-          | {{ item.name }}
-          span(v-if="item.desc" :class="$style.desc") {{ item.desc }}
-          span(v-if="item.statusLabel" :class="$style.status") {{ item.statusLabel }}
-    .p.gap-top
-      base-btn.btn(min @click="isShowUserApiModal = true") {{ $t('setting__basic_source_user_api_btn') }}
-
-dd
   h3#basic_window_size {{ $t('setting__basic_window_size') }}
   div
     base-checkbox.gap-left(
@@ -60,7 +33,6 @@ dd
 dd
   h3#basic_font_size {{ $t('setting__basic_font_size') }}
   div
-    //- base-selection.gap-teft(:list="fontSizeList" :model-value="appSetting['common.fontSize']" @update:model-value="updateSetting({'common.fontSize': $event})")
     base-checkbox.gap-left(
       v-for="item in fontSizeList" :id="`setting_basic_font_size_${item.id}`" :key="item.id"
       name="setting_basic_font_size" need :model-value="appSetting['common.fontSize']" :value="item.id"
@@ -71,21 +43,7 @@ dd
   div(style="--selection-width: 12rem;")
     base-selection.gap-left(:list="fontList" :model-value="fonts[0]" item-key="id" item-name="label" @update:model-value="updateFonts($event, fonts[1])")
     base-selection.gap-left(v-if="fonts[0]" :list="fontList" :model-value="fonts[1]" item-key="id" item-name="label" @update:model-value="updateFonts(fonts[0], $event)")
-    //- base-selection.gap-teft(:list="fontList" :model-value="appSetting['common.font']" item-key="id" item-name="label" @update:model-value="updateSetting({'common.font': $event})")
 
-dd
-  h3#basic_lang {{ $t('setting__basic_lang') }}
-  div
-    base-checkbox.gap-left(
-      v-for="item in langList" :id="`setting_lang_${item.locale}`" :key="item.locale" name="setting_lang"
-      need :model-value="appSetting['common.langId']" :value="item.locale" :label="item.name" @update:model-value="updateSetting({'common.langId': $event})")
-
-dd
-  h3#basic_sourcename {{ $t('setting__basic_sourcename') }}
-  div
-    base-checkbox.gap-left(
-      v-for="item in sourceNameTypes" :id="`setting_abasic_sourcename_${item.id}`" :key="item.id"
-      name="setting_basic_sourcename" need :model-value="appSetting['common.sourceNameType']" :value="item.id" :label="item.label" @update:model-value="updateSetting({'common.sourceNameType': $event})")
 dd
   h3#basic_control_btn_position {{ $t('setting__basic_control_btn_position') }}
   div
@@ -120,6 +78,12 @@ dd
         span 背景模糊
         span(style="font-size:11px;color:var(--color-font-label);min-width:42px;text-align:right") {{ lxWallpaperBlur }}px
       input(type="range" v-model.number="lxWallpaperBlur" min="0" max="30" step="1" style="width:100%;accent-color:var(--color-primary)")
+    .gap-top
+      label(style="display:flex;align-items:center;justify-content:space-between;padding:6px 0")
+        span Wallpaper Engine 动态壁纸
+        span(style="display:flex;gap:6px")
+          button(style="padding:4px 10px;border-radius:6px;border:1px solid var(--glass-stroke);background:color-mix(in srgb, var(--glass-card, transparent) calc(var(--glass-alpha, .8) * 100%), transparent);color:var(--color-font);cursor:pointer;font-size:12px" @click="isShowWEModal = true") 本机 Wallpaper Engine 壁纸
+          button(v-if="weActive" style="padding:4px 10px;border-radius:6px;border:1px solid var(--glass-stroke);background:color-mix(in srgb, var(--glass-card, transparent) calc(var(--glass-alpha, .8) * 100%), transparent);color:var(--color-font);cursor:pointer;font-size:12px" @click="clearWEWallpaper") 清除
     .gap-top
       label(style="display:flex;align-items:center;justify-content:space-between;padding:6px 0")
         span 自定义壁纸
@@ -161,34 +125,32 @@ dd
 
 ThemeSelectorModal(v-model="isShowThemeSelectorModal")
 ThemeEditModal(v-model="isShowThemeEditModal" :theme-id="editThemeId" @submit="handleRefreshTheme")
-play-timeout-modal(v-model="isShowPlayTimeoutModal")
-user-api-modal(v-model="isShowUserApiModal")
+WallpaperEngineModal(v-model="isShowWEModal")
 </template>
 
 <script>
+// Luminous Harmonic: 设置页重构 — 「外观与主题」分组
+// 内容自原 SettingBasic.vue 平移 (主题/窗口/字体/控制按钮/界面微调/播放栏样式), 功能不变
 import { computed, ref, watch, reactive, shallowReactive, onMounted } from '@common/utils/vueTools'
-import { windowSizeList, userApi, isFullscreen, themeId } from '@renderer/store'
-import { langList, useI18n } from '@root/lang'
+import { windowSizeList, isFullscreen, themeId } from '@renderer/store'
+import { useI18n } from '@root/lang'
 import { getSystemFonts } from '@renderer/utils/ipc'
-import apiSourceInfo from '@renderer/utils/musicSdk/api-source-info'
-import { useTimeout } from '@renderer/core/player/timeoutStop'
 import { dialog } from '@renderer/plugins/Dialog'
 
 import ThemeSelectorModal from './ThemeSelectorModal.vue'
 import ThemeEditModal from './ThemeEditModal/index.vue'
-import PlayTimeoutModal from './PlayTimeoutModal.vue'
-import UserApiModal from './UserApiModal.vue'
+import WallpaperEngineModal from './WallpaperEngineModal.vue'
 import { appSetting, updateSetting } from '@renderer/store/setting'
-import { applyWallpaper } from '@renderer/utils/wallpaper'
+// Luminous Harmonic: applyWallpaperEngine 必须导入 — 之前清除按钮调用未导入的函数直接抛错 (点击无效)
+import { applyWallpaper, applyWallpaperEngine } from '@renderer/utils/wallpaper'
 import { getThemes, applyTheme, findTheme, buildBgUrl } from '@renderer/store/utils'
 
 export default {
-  name: 'SettingBasic',
+  name: 'SettingAppearance',
   components: {
     ThemeSelectorModal,
     ThemeEditModal,
-    PlayTimeoutModal,
-    UserApiModal,
+    WallpaperEngineModal,
   },
   setup() {
     const t = useI18n()
@@ -241,7 +203,6 @@ export default {
     let dataPath = ''
     const init = () => {
       getThemes((info) => {
-        // console.log(info)
         dataPath = info.dataPath
         defaultThemesRaw.splice(0, defaultThemesRaw.length, ...info.themes.map(t => {
           return {
@@ -269,7 +230,6 @@ export default {
     }
     const editThemeId = ref('')
     const handleEditTheme = (theme) => {
-      // console.log(theme)
       if (theme?.isDefault) return
       if (!theme && userThemes.length >= 10) {
         void dialog({
@@ -295,6 +255,14 @@ export default {
     watch(() => [appSetting['theme.lightId'], appSetting['theme.darkId']], () => {
       getThemes(updateAutoTheme)
     })
+    const isShowWEModal = ref(false)
+    const weActive = ref(false)
+    const clearWEWallpaper = () => {
+      applyWallpaperEngine(null)
+      weActive.value = false
+      // 清除 WE 壁纸后恢复自定义图片壁纸 (若已设置)
+      if (wallpaper.value) applyWallpaperLocal()
+    }
     const isShowThemeSelectorModal = ref(false)
     const handleSetThemeAuto = () => {
       if (themeId.value == 'auto') return
@@ -308,47 +276,6 @@ export default {
       toggleTheme({ id: 'auto' })
     }
     const isShowThemeEditModal = ref(false)
-
-    const isShowPlayTimeoutModal = ref(false)
-    const { timeLabel } = useTimeout()
-
-    const isShowUserApiModal = ref(false)
-    const getApiStatus = () => {
-      let status
-      if (userApi.status) status = t('setting__basic_source_status_success')
-      else if (userApi.message == 'initing') status = t('setting__basic_source_status_initing')
-      else status = `${t('setting__basic_source_status_failed')}`
-
-      return status
-    }
-    const apiSources = computed(() => {
-      return [
-        ...apiSourceInfo.map(api => ({
-          id: api.id,
-          name: api.name,
-          label: api.name,
-          disabled: api.disabled,
-        })),
-        ...userApi.list.map(api => ({
-          id: api.id,
-          name: api.name,
-          label: `${api.name}${api.id == appSetting['common.apiSource'] ? `[${getApiStatus()}]` : ''}`,
-          desc: [/^\d/.test(api.version) ? `v${api.version}` : api.version].filter(Boolean).join(', '),
-          statusLabel: api.id == appSetting['common.apiSource'] ? `[${getApiStatus()}]` : '',
-          status: api.status,
-          message: api.message,
-          disabled: false,
-        })),
-      ]
-    })
-
-    const sourceNameTypes = computed(() => {
-      return [
-        { id: 'real', label: t('setting__basic_sourcename_real') },
-        { id: 'alias', label: t('setting__basic_sourcename_alias') },
-      ]
-    })
-
 
     const controlBtnPositionList = computed(() => {
       return [
@@ -444,7 +371,11 @@ export default {
       applyWallpaper(wallpaper.value)
       localStorage.setItem('lx-wallpaper', wallpaper.value)
     }
-    onMounted(() => { if (wallpaper.value) applyWallpaperLocal() })
+    // Luminous Harmonic: WE 壁纸/自定义壁纸的启动恢复统一由 App.vue 负责 (全局唯一挂载点)。
+    // 之前这里 onMounted 时再次 restoreWallpaperEngine/applyWallpaperLocal — 每次进入设置页
+    // 都会重设 video.src / bg 背景 → 视频重载、背景重绘, 表现为"从别的界面点进外观与主题就闪一下"。
+    // 这里只读取 WE 激活状态用于显示"清除"按钮。
+    try { weActive.value = !!JSON.parse(localStorage.getItem('lx-we-current') ?? 'null')?.id } catch (_) {}
 
     return {
       uiRadius,
@@ -463,19 +394,13 @@ export default {
       themeList,
       fonts,
       updateFonts,
-      // currentStting,
-      // themes,
-      // themeClassName,
+      isShowWEModal,
+      weActive,
+      clearWEWallpaper,
       isShowThemeSelectorModal,
       isShowThemeEditModal,
       handleSetThemeAuto,
-      isShowPlayTimeoutModal,
-      timeLabel,
-      apiSources,
-      isShowUserApiModal,
       windowSizeList,
-      langList,
-      sourceNameTypes,
       controlBtnPositionList,
       fontList,
       isFullscreen,
@@ -496,7 +421,6 @@ export default {
 .theme {
   display: flex;
   flex-flow: row wrap;
-  // padding: 0 15px;
   margin-bottom: -20px;
 
   .themeItem {
@@ -504,7 +428,6 @@ export default {
     flex-flow: column nowrap;
     align-items: center;
     cursor: pointer;
-    // color: var(--color-primary);
     margin-right: 8px;
     transition: .3s ease;
     transition-property: color, opacity;
@@ -641,8 +564,6 @@ export default {
           justify-content: center;
         }
         .icon {
-          // position: absolute;
-          // font-size: 16px;
           width: 66%;
           height: auto;
         }
@@ -663,22 +584,4 @@ export default {
     }
   }
 }
-
-.sourceLabel {
-  flex: auto;
-  margin-left: 5px;
-  line-height: 1.5;
-  cursor: pointer;
-
-  .desc {
-    color: var(--color-500);
-    font-size: 12px;
-    margin-left: 5px;
-  }
-
-  .status {
-    margin-left: 5px;
-  }
-}
-
 </style>

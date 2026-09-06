@@ -435,27 +435,35 @@ input, textarea {
 
 .scroll {
   overflow: auto;
+  // Luminous Harmonic: 滚动条常态完全隐藏 (轨道+滑块), 做滚动动作时浮现 (App.vue 全局 scroll
+  // 捕获监听给正在滚动的 .scroll 容器加 .is-scrolling, 停止约 1s 后移除), 悬停容器时也保持可见
   &::-webkit-scrollbar {
     width: 6px;
     height: 6px;
-    background-color: rgba(0, 0, 0, 0);
+    background-color: transparent;
   }
   &::-webkit-scrollbar-track {
-    background-color: var(--color-primary-light-100-alpha-800);
+    background-color: transparent;
     border-radius: 3px;
-    // background-color: rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease;
   }
   &::-webkit-scrollbar-thumb {
     border-radius: 3px;
-    background-color: var(--color-primary-alpha-600);
-    // background-color: rgba(0, 0, 0, 0.2);
-    transition: background-color 0.4s ease;
+    background-color: transparent;
+    transition: background-color 0.3s ease;
   }
-  &::-webkit-scrollbar-thumb:hover {
+  &.is-scrolling::-webkit-scrollbar-track,
+  &:hover::-webkit-scrollbar-track {
+    background-color: color-mix(in srgb, var(--color-primary-light-100-alpha-800) 40%, transparent);
+  }
+  &.is-scrolling::-webkit-scrollbar-thumb,
+  &:hover::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background-color: color-mix(in srgb, var(--color-primary-alpha-600) 55%, transparent);
+  }
+  &:hover::-webkit-scrollbar-thumb:hover {
     border-radius: 3px;
     background-color: var(--color-primary-alpha-400);
-    // background-color: rgba(0, 0, 0, 0.4);
-    transition: background-color 0.4s ease;
   }
 }
 

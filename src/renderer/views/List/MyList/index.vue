@@ -8,16 +8,6 @@
             <use xlink:href="#icon-list-add" />
           </svg>
         </button>
-        <button :class="[$style.listsAdd, $style.neteaseAdd]" :aria-label="$t('netease__import')" :title="$t('netease__import')" @click="isShowNeteaseImportModal = true">
-          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="70%" width="24" viewBox="0 0 24 24" space="preserve">
-            <path fill="currentColor" d="M7.3 19.5a5.3 5.3 0 0 1-.2-10.6A6.3 6.3 0 0 1 19 10.7a4.5 4.5 0 0 1-.5 8.8H7.3Zm0-8.6a3.3 3.3 0 1 0 0 6.6h11.2a2.5 2.5 0 1 0-.3-5 1 1 0 0 1-1-.9 4.3 4.3 0 0 0-8.3-1.1 1 1 0 0 1-1 .6h-.6Z" />
-          </svg>
-        </button>
-        <button :class="[$style.listsAdd, $style.qishuiAdd]" :aria-label="$t('qishui__import')" :title="$t('qishui__import')" @click="isShowQishuiImportModal = true">
-          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="70%" width="24" viewBox="0 0 24 24" space="preserve">
-            <path fill="currentColor" d="M9 3v11.1a3.5 3.5 0 1 0 2 3.15V7.2l8-1.7v5.9a3.5 3.5 0 1 0 2 3.15V2L9 4.1V3Zm2 4.1 8-1.7v2.05l-8 1.7V7.1ZM5.5 3.5 7 3.2v2.05L5.5 5.5a1.75 1.75 0 1 0 0 3.5H7v2H5.5a3.75 3.75 0 1 1 0-7.5Z"/>
-          </svg>
-        </button>
 
         <button :class="$style.listsAdd" :aria-label="$t('list_update_modal__title')" @click="isShowListUpdateModal = true">
           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" style="transform: rotate(45deg);" height="70%" viewBox="0 0 24 24" space="preserve">
@@ -25,6 +15,29 @@
           </svg>
         </button>
       </div>
+    </div>
+    <!-- Luminous Harmonic: 平台歌单导入按钮行 — 网易云 / 汽水 / 酷狗 / QQ -->
+    <div :class="$style.platformRow">
+      <button :class="$style.platformBtn" :aria-label="$t('netease__import')" :title="$t('netease__import')" @click="isShowNeteaseImportModal = true">
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="70%" width="24" viewBox="0 0 24 24" space="preserve">
+          <path fill="currentColor" d="M7.3 19.5a5.3 5.3 0 0 1-.2-10.6A6.3 6.3 0 0 1 19 10.7a4.5 4.5 0 0 1-.5 8.8H7.3Zm0-8.6a3.3 3.3 0 1 0 0 6.6h11.2a2.5 2.5 0 1 0-.3-5 1 1 0 0 1-1-.9 4.3 4.3 0 0 0-8.3-1.1 1 1 0 0 1-1 .6h-.6Z" />
+        </svg>
+      </button>
+      <button :class="$style.platformBtn" :aria-label="$t('qishui__import')" :title="$t('qishui__import')" @click="isShowQishuiImportModal = true">
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="70%" width="24" viewBox="0 0 24 24" space="preserve">
+          <path fill="currentColor" d="M9 3v11.1a3.5 3.5 0 1 0 2 3.15V7.2l8-1.7v5.9a3.5 3.5 0 1 0 2 3.15V2L9 4.1V3Zm2 4.1 8-1.7v2.05l-8 1.7V7.1ZM5.5 3.5 7 3.2v2.05L5.5 5.5a1.75 1.75 0 1 0 0 3.5H7v2H5.5a3.75 3.75 0 1 1 0-7.5Z"/>
+        </svg>
+      </button>
+      <button :class="[$style.platformBtn, $style.kugouAdd]" :aria-label="$t('kugou__import')" :title="$t('kugou__import')" @click="isShowKugouImportModal = true">
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="70%" width="24" viewBox="0 0 24 24" space="preserve">
+          <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2.4a7.6 7.6 0 1 1 0 15.2 7.6 7.6 0 0 1 0-15.2Zm-1.6 3.1v8.2l6.3-4.1-6.3-4.1Z"/>
+        </svg>
+      </button>
+      <button :class="[$style.platformBtn, $style.qqAdd]" :aria-label="$t('qq__import')" :title="$t('qq__import')" @click="isShowQQImportModal = true">
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="70%" width="24" viewBox="0 0 24 24" space="preserve">
+          <path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.8-.4 1.1-1.1 2.6-2.2 3.6-.3.3-.1.8.3.8 1.5-.1 3-.7 4-1.5.6.1 1.2.2 1.9.2a7 7 0 0 0 0-14Zm-2.5 6.2a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Zm5 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Z"/>
+        </svg>
+      </button>
     </div>
     <ul ref="dom_lists_list" class="scroll" :class="[$style.listsContent, { [$style.sortable]: isModDown }]">
       <li
@@ -61,7 +74,7 @@
         <span :class="$style.listsLabel" @click="handleListToggle(item.id, index + 2)">
           <svg-icon v-if="item.id == listId" name="angle-right-solid" :class="$style.activeIcon" />
           <span :class="$style.listName">{{ item.name }}</span>
-          <span v-if="item.source === 'wy'" :class="$style.sourceLabel">{{ $t('netease__source') }}</span>
+          <span v-if="sourceLabels[item.source]" :class="$style.sourceLabel">{{ sourceLabels[item.source] }}</span>
         </span>
         <base-input
           :class="$style.listsInput" type="text" :value="item.name"
@@ -83,6 +96,8 @@
     <ListUpdateModal v-model:visible="isShowListUpdateModal" />
     <NetEaseImportModal v-model="isShowNeteaseImportModal" />
     <QishuiImportModal v-model="isShowQishuiImportModal" />
+    <KugouImportModal v-model="isShowKugouImportModal" />
+    <QQImportModal v-model="isShowQQImportModal" />
   </div>
 </template>
 
@@ -95,6 +110,8 @@ import ListSortModal from './components/ListSortModal.vue'
 import ListUpdateModal from './components/ListUpdateModal.vue'
 import NetEaseImportModal from './components/NetEaseImportModal.vue'
 import QishuiImportModal from './components/QishuiImportModal.vue'
+import KugouImportModal from './components/KugouImportModal.vue'
+import QQImportModal from './components/QQImportModal.vue'
 
 import { defaultList, loveList, userLists, fetchingListStatus } from '@renderer/store/list/state'
 import { removeUserList } from '@renderer/store/list/action'
@@ -128,6 +145,8 @@ export default {
     ListUpdateModal,
     NetEaseImportModal,
     QishuiImportModal,
+    KugouImportModal,
+    QQImportModal,
   },
   props: {
     listId: {
@@ -149,6 +168,8 @@ export default {
     const { isShowDuplicateMusicModal, duplicateListInfo, handleDuplicateList } = useDuplicate()
     const isShowNeteaseImportModal = ref(false)
     const isShowQishuiImportModal = ref(false)
+    const isShowKugouImportModal = ref(false)
+    const isShowQQImportModal = ref(false)
     const { handleRename, handleSaveListName, isShowNewList, isNewListLeave, handleCreateList } = useEditList({ dom_lists_list })
     useListScroll({ dom_lists_list })
 
@@ -235,7 +256,16 @@ export default {
       })
     })
 
+    // Luminous Harmonic: 平台标识文案 (与列表内音源徽标一致)
+    const sourceLabels = {
+      wy: t('list__source_wy'),
+      kg: t('list__source_kg'),
+      tx: t('list__source_tx'),
+      qishui: t('list__source_qishui'),
+    }
+
     return {
+      sourceLabels,
       rightClickItemIndex,
       defaultList,
       loveList,
@@ -249,6 +279,8 @@ export default {
       duplicateListInfo,
       isShowNeteaseImportModal,
       isShowQishuiImportModal,
+      isShowKugouImportModal,
+      isShowQQImportModal,
       handleSaveListName,
       isShowNewList,
       isNewListLeave,
@@ -327,12 +359,33 @@ export default {
     opacity: .6 !important;
   }
 }
-.neteaseAdd,
-.qishuiAdd {
+// Luminous Harmonic: 平台歌单导入按钮行 (标题栏下方)
+.platformRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 10px;
+}
+.platformBtn {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   opacity: .75;
   color: var(--color-primary);
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
   &:hover {
-    opacity: 1 !important;
+    opacity: 1;
+    background: color-mix(in srgb, var(--color-font) 4%, transparent);
   }
 }
 .listsContent {
@@ -413,10 +466,13 @@ export default {
 }
 .sourceLabel {
   flex: none;
-  margin-left: 5px;
-  color: var(--color-font-label);
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   font-size: 10px;
-  line-height: 1.2;
+  line-height: 1.4;
 }
 .listsInput {
   width: 100%;

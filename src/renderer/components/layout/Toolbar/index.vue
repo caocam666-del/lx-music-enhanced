@@ -11,6 +11,8 @@ import { isFullscreen } from '@renderer/store'
 import { appSetting } from '@renderer/store/setting'
 import ControlBtns from './ControlBtns.vue'
 import SearchInput from './SearchInput.vue'
+// Luminous Harmonic: 双击顶栏空白处最大化/还原 — 拖动区双击为系统原生行为
+// (resizable/maximizable 已开启), 无需自行检测; 最大化状态见 useWindowMaximize
 
 </script>
 

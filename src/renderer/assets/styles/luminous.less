@@ -18,8 +18,11 @@
 }
 
 // ---------- 自定义壁纸背景 (可选, z-index:-2 在最底层) ----------
+// Luminous Harmonic: absolute 定位在 #container 内 (而非 fixed) —
+// #root 有 overflow:hidden + 圆角, absolute 层会被正确裁剪在软件边界内;
+// 之前的 fixed 层逃逸裁剪, 导致壁纸 (尤其视频层 inset+width:100% 过约束) 超出软件边界
 #lx-wallpaper-bg {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: -2;
   pointer-events: none;
@@ -27,12 +30,47 @@
   background-position: center;
   background-repeat: no-repeat;
   transition: opacity 0.5s ease;
-  opacity: var(--lx-wallpaper-opacity, 0.4);
+  // Luminous Harmonic: 背景强度滑块 (设置页) — 以亮度自适应透明度为基准的倍率 (40 = 原行为)
+  opacity: calc(var(--lx-wallpaper-opacity, 0.4) * var(--lx-wallpaper-strength, 40) / 40);
+  // Luminous Harmonic: 背景模糊滑块 (设置页) — blur 采样会产生半透明毛边, 放大裁掉
+  filter: blur(var(--lx-wallpaper-blur, 0px));
+  transform: scale(calc(1 + var(--lx-wallpaper-blur, 0px) * 0.01));
+  transform-origin: center;
+}
+
+// ---------- 壁纸模糊底衬层 (WE 场景/web 方形预览图的满幅模糊背景) ----------
+// 默认 opacity 0 完全隐藏, 由 wallpaper.js 在应用场景/web 壁纸时写 --lx-wallpaper-backdrop-opacity 开启
+#lx-wallpaper-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--lx-wallpaper-backdrop-opacity, 0);
+  transition: opacity 0.5s ease;
+  // blur 会产生半透明毛边: 放大 1.15 裁掉
+  filter: blur(48px) saturate(1.2);
+  transform: scale(1.15);
+  transform-origin: center;
+}
+
+// ---------- Wallpaper Engine 视频壁纸层 (与 bg 同层级, 静音循环) ----------
+#lx-wallpaper-video {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 // ---------- 流光背景 (3 个渐变球慢速漂移, GPU 加速) ----------
+// Luminous Harmonic: 与壁纸层一致改为 absolute (见 #lx-wallpaper-bg 注释) — 裁剪在软件边界内
 #luminous-bg {
-  position: fixed;
+  position: absolute;
   inset: 0;
   // Luminous Harmonic: 背景层在内容之下.
   // 实际 z-index: 0 (不是注释曾写的 -1) — 依赖 #main/#player 的 z-index: 1 压在其上;
@@ -131,19 +169,22 @@
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+// Luminous Harmonic: 滚动条常态隐藏, 悬停容器/滚动时才浮现 (半透明)
 ::-webkit-scrollbar-thumb {
-  background: var(--color-scrollbar, rgba(255, 255, 255, 0.1));
+  background: transparent;
   border-radius: 10px;
   border: 2px solid transparent;
   background-clip: padding-box;
   min-height: 40px;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background 0.25s ease, border-color 0.2s ease;
 }
-::-webkit-scrollbar-thumb:hover {
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar, rgba(255, 255, 255, 0.1));
+}
+*:hover::-webkit-scrollbar-thumb:hover {
   background: var(--color-scrollbar-hover, rgba(255, 255, 255, 0.25));
-  border-color: var(--glass-stroke, rgba(255, 255, 255, 0.08));
 }
-::-webkit-scrollbar-thumb:active {
+*:active::-webkit-scrollbar-thumb {
   background: var(--color-scrollbar-hover, rgba(255, 255, 255, 0.35));
 }
 ::-webkit-scrollbar-corner {

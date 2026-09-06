@@ -3,7 +3,7 @@
     <div v-if="showModal" ref="dom_container" :class="$style.container">
       <div :class="[$style.modal, {[$style.filter]: filter, [$style.modalActive]: showContent}]" @click="bgClose && close()">
         <transition :enter-active-class="inClass" :leave-active-class="outClass" @after-enter="$emit('after-enter', $event)" @after-leave="handleAfterLeave">
-          <div v-show="showContent" :class="$style.content" :style="contentStyle" @click.stop>
+          <div v-show="showContent" :class="[$style.content, { [$style.frosted]: frosted }]" :style="contentStyle" @click.stop>
             <header :class="$style.header">
               <button v-if="closeBtn" type="button" @click="close">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 212.982 212.982" space="preserve">
@@ -27,6 +27,10 @@ import { appSetting } from '@renderer/store/setting'
 let modalCount = 0
 export default {
   props: {
+    frosted: {
+      type: Boolean,
+      default: false,
+    },
     show: {
       type: Boolean,
       default: false,
@@ -205,9 +209,6 @@ export default {
     pointer-events: auto;
   }
 
-  &.filter {
-    backdrop-filter: grayscale(70%);
-  }
 
   // &:before {
   //   .mixin-after();
@@ -225,7 +226,8 @@ export default {
   position: relative;
   // 内容区始终可点 (即使在 pointer-events:none 的容器/遮罩里, 子级可重新开启点击)
   pointer-events: auto;
-  border-radius: @radius-glass-lg;
+  // Luminous Harmonic: 圆角与设置页圆角滑块联动 (--lx-radius-lg = 滑块值 × 1.33)
+  border-radius: var(--lx-radius-lg, @radius-glass-lg);
   box-shadow: var(--glass-shadow, 0 0 4px rgba(0, 0, 0, .25)), inset 0 0 0 1px var(--glass-stroke, transparent);
   overflow: hidden;
   // max-height: 80%;
@@ -239,18 +241,40 @@ export default {
   backdrop-filter: blur(var(--glass-blur-strong, 40px)) saturate(1.3);
 }
 
+// Luminous Harmonic: 磨砂主题色浮窗变体 — 主色渐变玻璃 + 主色描边光晕 (随主题变色)
+.frosted .header {
+  background-color: transparent;
+}
+
+.frosted {
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--color-primary) 15%, transparent) 0%,
+      color-mix(in srgb, var(--color-primary) 6%, transparent) 48%,
+      color-mix(in srgb, var(--color-content-background) 55%, transparent) 100%),
+    color-mix(in srgb, var(--glass-surface-strong, var(--color-content-background)) calc(var(--glass-alpha, .8) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
+  box-shadow:
+    0 24px 70px -18px color-mix(in srgb, var(--color-primary) 45%, rgba(0, 0, 0, 0.45)),
+    0 8px 24px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent);
+}
+
 .header {
   flex: none;
-  background-color: var(--color-primary-light-100-alpha-100);
+  background-color: transparent;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  height: 18px;
+  // Luminous Harmonic: 顶部栏加高 (18px 太薄, 与弹窗比例失调)
+  min-height: 44px;
+  padding: 0 10px;
+  box-sizing: border-box;
 
   button {
     border: none;
     cursor: pointer;
-    padding: 4px 7px;
+    padding: 6px 9px;
     background-color: transparent;
     color: var(--color-primary-dark-500-alpha-500);
     outline: none;
@@ -258,7 +282,7 @@ export default {
     line-height: 0;
 
     svg {
-      height: .7em;
+      height: 1em;
     }
 
     &:hover {

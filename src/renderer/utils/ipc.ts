@@ -91,6 +91,60 @@ export const getQishuiPlaylistTracks = async(playlistId: string) => {
   return rendererInvoke<string, QishuiTrackMeta[]>(WIN_MAIN_RENDERER_EVENT_NAME.qishui_get_playlist_tracks, playlistId)
 }
 
+// Luminous Harmonic: 酷狗音乐歌单导入
+export interface KugouLibraryResult { userId: string, nickname: string, playlists: KugouPlaylistMeta[] }
+export interface KugouPlaylistMeta { id: string, listId: string, name: string, cover: string, trackCount: number }
+export interface KugouTrackMeta { songId: string, hash: string, name: string, singer: string, albumId: string, albumName: string, interval: string, cover: string, qualitys: Array<{ type: string, hash?: string, size?: number | null }> }
+
+export const getKugouStatus = async() => {
+  return rendererInvoke<{ loggedIn: boolean, playbackReady: boolean, userId: string, nickname: string }>(WIN_MAIN_RENDERER_EVENT_NAME.kugou_status)
+}
+export const setKugouCookie = async(cookie: string) => {
+  await rendererInvoke<string, undefined>(WIN_MAIN_RENDERER_EVENT_NAME.kugou_set_cookie, cookie)
+}
+export const clearKugouCookie = async() => {
+  await rendererInvoke(WIN_MAIN_RENDERER_EVENT_NAME.kugou_clear_cookie)
+}
+export const getKugouLibrary = async() => {
+  return rendererInvoke<KugouLibraryResult>(WIN_MAIN_RENDERER_EVENT_NAME.kugou_get_library)
+}
+export const openKugouLoginWindow = async() => {
+  return rendererInvoke<{ ok: boolean, cookie?: string, partial?: boolean, cancelled?: boolean, message?: string }>(WIN_MAIN_RENDERER_EVENT_NAME.kugou_open_login_window)
+}
+export const getKugouPlaylistTracks = async(playlistId: string) => {
+  return rendererInvoke<string, KugouTrackMeta[]>(WIN_MAIN_RENDERER_EVENT_NAME.kugou_get_playlist_tracks, playlistId)
+}
+
+// Luminous Harmonic: QQ 音乐歌单导入
+export interface QQLibraryResult { userId: string, nickname: string, playlists: QQPlaylistMeta[] }
+export interface QQPlaylistMeta { id: string, name: string, cover: string, trackCount: number }
+export interface QQTrackMeta { songmid: string, songId: string, strMediaMid: string, name: string, singer: string, albumId: string, albumMid: string, albumName: string, interval: string, cover: string, qualitys: Array<{ type: string, size: number | null }> }
+
+export const getQQStatus = async() => {
+  return rendererInvoke<{ loggedIn: boolean, playbackReady: boolean, userId: string }>(WIN_MAIN_RENDERER_EVENT_NAME.qq_status)
+}
+export const setQQCookie = async(cookie: string) => {
+  await rendererInvoke<string, undefined>(WIN_MAIN_RENDERER_EVENT_NAME.qq_set_cookie, cookie)
+}
+export const clearQQCookie = async() => {
+  await rendererInvoke(WIN_MAIN_RENDERER_EVENT_NAME.qq_clear_cookie)
+}
+export const getQQLibrary = async() => {
+  return rendererInvoke<QQLibraryResult>(WIN_MAIN_RENDERER_EVENT_NAME.qq_get_library)
+}
+export const openQQLoginWindow = async() => {
+  return rendererInvoke<{ ok: boolean, cookie?: string, partial?: boolean, cancelled?: boolean, message?: string }>(WIN_MAIN_RENDERER_EVENT_NAME.qq_open_login_window)
+}
+export const getQQPlaylistTracks = async(playlistId: string) => {
+  return rendererInvoke<string, QQTrackMeta[]>(WIN_MAIN_RENDERER_EVENT_NAME.qq_get_playlist_tracks, playlistId)
+}
+
+// Luminous Harmonic: Wallpaper Engine 壁纸
+export interface WEWallpaperMeta { id: string, title: string, projectType: string, playable: boolean, previewUrl: string, mediaUrl: string }
+export const getWallpaperEngineList = async() => {
+  return rendererInvoke<WEWallpaperMeta[]>(WIN_MAIN_RENDERER_EVENT_NAME.we_list)
+}
+
 export const getProjectTempPath = async() => {
   return rendererInvoke<string>(WIN_MAIN_RENDERER_EVENT_NAME.get_project_temp_path)
 }

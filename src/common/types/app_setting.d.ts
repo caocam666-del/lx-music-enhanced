@@ -109,6 +109,11 @@ declare global {
       'player.togglePlayMethod': 'listLoop' | 'random' | 'list' | 'singleLoop' | 'none'
 
       /**
+       * 切歌过渡方式 (复刻 pure-music)
+       */
+      'player.songTransition': 'none' | 'fade' | 'crossfade' | 'smart'
+
+      /**
        * 优先播放的音质
        */
       'player.playQuality': LX.Quality

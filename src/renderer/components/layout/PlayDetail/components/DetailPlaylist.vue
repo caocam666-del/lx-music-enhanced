@@ -11,11 +11,14 @@
               svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="55%" viewBox="0 0 512 512" space="preserve")
                 use(xlink:href="#icon-musicFile")
             img(v-if="getPic(item)" :src="getPic(item)" loading="lazy" decoding="async" :class="$style.coverImg" :aria-label="getName(item)" @error="$event.target.style.display = 'none'")
-            div(v-if="index == playIndex" :class="$style.playingBadge")
-              span(:class="$style.playingBars")
+            div(v-if="index == playIndex" :class="[$style.playingBadge, { [$style.playingBadgePaused]: !isPlay }]" @click.stop="togglePlay()")
+              span(v-if="isPlay" :class="$style.equalizer")
                 i
                 i
                 i
+                i
+              svg(v-else version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="45%" viewBox="0 0 1024 1024" space="preserve")
+                use(xlink:href="#icon-play")
           div(:class="$style.info")
             div(:class="$style.name")
               span {{ getName(item) }}
@@ -32,9 +35,9 @@
 // (封面 + 歌名/歌手·专辑两行 + 时长, 当前行封面叠加声量条)。列表数据沿用
 // useListInfo 的"ref + 事件刷新"模式 (allMusicList 为 markRaw 非响应 Map)。
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from '@common/utils/vueTools'
-import { playInfo } from '@renderer/store/player/state'
+import { playInfo, isPlay } from '@renderer/store/player/state'
 import { getListMusicsFromCache } from '@renderer/store/list/action'
-import { playList } from '@renderer/core/player/action'
+import { playList, togglePlay } from '@renderer/core/player/action'
 
 export default {
   name: 'DetailPlaylist',
@@ -89,6 +92,8 @@ export default {
       list,
       playIndex,
       play,
+      isPlay,
+      togglePlay,
       getName,
       getSinger,
       getAlbum,
@@ -196,6 +201,7 @@ export default {
   justify-content: center;
   background: color-mix(in srgb, var(--detail-accent-color, var(--color-primary)) 55%, transparent);
   color: #fff;
+  cursor: pointer;
 }
 .info {
   flex: 1 1 auto;
@@ -260,5 +266,32 @@ export default {
   color: var(--color-font-label);
   font-size: 14px;
   opacity: .72;
+}
+// Luminous Harmonic: 播放中封面叠加 — 均衡器律动条(播放中)/播放三角(暂停, 点击恢复)
+.playingBadgePaused {
+  background: color-mix(in srgb, rgba(0, 0, 0, 0.45) 60%, transparent);
+}
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 40%;
+
+  i {
+    width: 3px;
+    border-radius: 1px;
+    background: currentColor;
+    animation: eq-bar 0.8s ease-in-out infinite;
+
+    &:nth-child(1) { animation-delay: 0s; height: 50%; }
+    &:nth-child(2) { animation-delay: 0.2s; height: 100%; }
+    &:nth-child(3) { animation-delay: 0.4s; height: 65%; }
+    &:nth-child(4) { animation-delay: 0.1s; height: 80%; }
+  }
+}
+
+@keyframes eq-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
 }
 </style>

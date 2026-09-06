@@ -17,6 +17,7 @@ import {
   setIgnoreMouseEvents,
   // setThumbnailClip,
   toggleMinimize,
+  toggleMaximize,
   toggleHide,
   showSelectDialog,
   showDialog,
@@ -44,6 +45,9 @@ export default () => {
   })
   mainOn(WIN_MAIN_RENDERER_EVENT_NAME.min_toggle, () => {
     toggleMinimize()
+  })
+  mainHandle(WIN_MAIN_RENDERER_EVENT_NAME.max_toggle, () => {
+    toggleMaximize()
   })
   mainOn(WIN_MAIN_RENDERER_EVENT_NAME.hide_toggle, () => {
     toggleHide()
