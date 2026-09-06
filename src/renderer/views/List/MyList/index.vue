@@ -367,24 +367,24 @@ export default {
   display: flex !important;
   align-items: center !important;
   flex-wrap: wrap !important; // 兜底: 极端窄面板才换行
-  gap: 8px !important;
+  gap: 6px !important;
   max-width: 100% !important;
-  padding: 0 4px 10px !important;
+  padding: 0 2px 10px !important;
 }
 .platformBtn {
   flex: 0 1 auto !important; // !important: 生产构建中此行样式曾被全局规则覆盖 (安装版图标放大越界)
   min-width: 0 !important;
-  width: 28px !important;
-  max-width: 28px !important;
-  height: 28px !important;
+  width: 24px !important;
+  max-width: 24px !important;
+  height: 24px !important;
   padding: 0 !important;
   margin: 0 !important;
   overflow: hidden !important;
 
   svg {
-    width: auto;
-    max-width: 100%;
-    height: 70%;
+    width: 18px !important;
+    max-width: 100% !important;
+    height: 18px !important;
   }
   border: none;
   background: transparent;

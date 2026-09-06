@@ -15,7 +15,7 @@
            侧栏菜单切换 (path 变化) → 仍保留方向性滑动过渡
         4. 伪影 (重影/滚动条跳动) 的处理见底部 CSS 注释
       -->
-      <transition name="view-transition">
+      <transition name="view-transition" :duration="{ enter: 300, leave: 170 }">
         <component :is="Component" :key="route.path" class="view-container" />
       </transition>
     </router-view>
