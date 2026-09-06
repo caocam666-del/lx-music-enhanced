@@ -363,21 +363,23 @@ export default {
 }
 // Luminous Harmonic: 平台歌单导入按钮行 (标题栏下方)
 .platformRow {
-  flex: none;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap; // 兜底: 极端窄面板才换行
-  gap: 8px;
-  max-width: 100%;
-  padding: 0 4px 10px;
+  flex: none !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important; // 兜底: 极端窄面板才换行
+  gap: 8px !important;
+  max-width: 100% !important;
+  padding: 0 4px 10px !important;
 }
 .platformBtn {
-  flex: 0 1 auto; // 允许收缩: 面板再窄也单行放下, 按钮等比压缩
-  min-width: 0;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  overflow: hidden;
+  flex: 0 1 auto !important; // !important: 生产构建中此行样式曾被全局规则覆盖 (安装版图标放大越界)
+  min-width: 0 !important;
+  width: 28px !important;
+  max-width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
 
   svg {
     width: auto;
