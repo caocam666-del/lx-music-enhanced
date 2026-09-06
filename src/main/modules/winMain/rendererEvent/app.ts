@@ -46,7 +46,7 @@ export default () => {
   mainOn(WIN_MAIN_RENDERER_EVENT_NAME.min_toggle, () => {
     toggleMinimize()
   })
-  mainHandle(WIN_MAIN_RENDERER_EVENT_NAME.max_toggle, () => {
+  mainHandle(WIN_MAIN_RENDERER_EVENT_NAME.max_toggle, async() => {
     toggleMaximize()
   })
   mainOn(WIN_MAIN_RENDERER_EVENT_NAME.hide_toggle, () => {

@@ -29,6 +29,7 @@ const AUTO_LOGIN_SCRIPT = `
 export interface WebLoginResult {
   ok: boolean
   cookie?: string
+  reused?: boolean
   partial?: boolean
   cancelled?: boolean
   message?: string

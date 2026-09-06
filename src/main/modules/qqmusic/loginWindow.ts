@@ -90,6 +90,7 @@ const buildQQCookieHeader = (cookies: Electron.Cookie[]): string => {
 export interface WebLoginResult {
   ok: boolean
   cookie?: string
+  reused?: boolean
   partial?: boolean
   cancelled?: boolean
   message?: string

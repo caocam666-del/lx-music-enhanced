@@ -64,7 +64,7 @@ const streamFile = async(filePath: string, request: Request): Promise<Response> 
   })
 }
 
-const handleLxWeRequest = (request: Request): Response => {
+const handleLxWeRequest = async(request: Request): Promise<Response> => {
   const u = new URL(request.url)
   // lx-we://media/<id> | lx-we://preview/<id>
   const kind = u.hostname
