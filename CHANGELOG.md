@@ -6,7 +6,7 @@ Project versioning adheres to [Semantic Versioning](http://semver.org/).
 Commit convention is based on [Conventional Commits](http://conventionalcommits.org).
 Change log format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [2.12.3](https://github.com/caocam666-del/lx-music-enhanced/releases/tag/v2.12.3) - 2026-09-06
+## [2.12.4](https://github.com/caocam666-del/lx-music-enhanced/releases/tag/v2.12.4) - 2026-09-06
 
 Luminous Harmonic 增强版首个发布。基于原版 2.12.2，新增歌单批量导入、Wallpaper Engine 动态壁纸、切歌过渡等能力，并完成界面视觉与交互的全面重构。
 
