@@ -305,6 +305,8 @@ export default {
 .lists {
   flex: none;
   width: 16%;
+  min-width: 0;
+  overflow: hidden; // 任何超宽内容都裁剪在侧栏内, 不侵入右侧内容区
   display: flex;
   flex-flow: column nowrap;
   // Luminous Harmonic: 统一透明度公式 (乘全局 --glass-alpha)
@@ -364,7 +366,9 @@ export default {
   flex: none;
   display: flex;
   align-items: center;
+  flex-wrap: wrap; // 按钮放不下时换行, 不越出侧栏
   gap: 10px;
+  max-width: 100%;
   padding: 0 4px 10px;
 }
 .platformBtn {
