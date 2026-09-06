@@ -1,5 +1,10 @@
 <template>
-  <material-modal :show="modelValue" bg-close teleport="#view" width="720px" max-height="86%" @close="handleClose">
+  <!-- Luminous Harmonic: teleport 必须用 #root (路由树之外) —
+       之前用 #view 时, Teleport 会在 #view 里本组件根元素之后留一个锚点注释节点;
+       切换大菜单时旧页卸载会移除该锚点, 而新页面挂载仍以它为插入锚点,
+       导致 "insertBefore: not a child of this node" → 渲染 flush 中断 → 整页空白
+       (复现: 设置→外观与主题→点任意大菜单) -->
+  <material-modal :show="modelValue" bg-close teleport="#root" width="720px" max-height="86%" @close="handleClose">
     <main class="scroll" :class="$style.main">
       <header :class="$style.title">
         <h2>{{ $t('we__title') }}</h2>
