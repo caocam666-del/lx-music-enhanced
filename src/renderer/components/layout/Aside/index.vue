@@ -3,12 +3,11 @@
     <!-- Luminous Harmonic: 顶部 Logo 块 — 折叠态下点 logo 即展开 -->
     <div :class="$style.brand" @click="appSetting['common.asideCollapsed'] && toggleCollapse()">
       <div :class="$style.logoBox">
-        <!-- Luminous Harmonic: 内联 SVG logo, 不依赖 <use> 引用 (某些主题下 defs 引用可能丢失) -->
-        <svg :class="$style.logoIcon" xmlns="http://www.w3.org/2000/svg" viewBox="-61 0 512 512" height="22" width="22" aria-hidden="true">
-          <path d="m295 120.5h86.230469l-111.230469-111.695312v86.53125c0 13.875 11.214844 25.164062 25 25.164062zm0 0" fill="currentColor"/>
-          <path d="m240 346.5c0 8.269531 6.730469 15 15 15s15-6.730469 15-15v-15.25h-15c-7.960938 0-15 6.324219-15 15.25zm0 0" fill="currentColor"/>
-          <path d="m295 150.5c-30.328125 0-55-24.746094-55-55.167969v-95.332031h-185c-30.328125 0-55 24.746094-55 55.167969v401.667969c0 30.417968 24.671875 55.164062 55 55.164062h280c30.328125 0 55-24.746094 55-55.167969v-306.332031zm5 196c0 24.8125-20.1875 45-45 45s-45-20.1875-45-45c0-25.507812 20.53125-45.25 45-45.25h15v-56.144531l-90 22.59375v108.925781c0 24.8125-20.1875 45-45 45s-45-20.1875-45-45c0-25.507812 20.53125-45.25 45-45.25h15v-75.375c0-6.878906 4.675781-12.875 11.347656-14.546875l120-30.125c9.46875-2.382813 18.652344 4.796875 18.652344 14.546875zm0 0" fill="currentColor"/>
-          <path d="m120 376.625c0 8.269531 6.730469 15 15 15s15-6.730469 15-15v-15.25h-15c-7.960938 0-15 6.324219-15 15.25zm0 0" fill="currentColor"/>
+        <!-- Luminous Harmonic: 透明简笔音符 logo (线性描边, 跟随主题色) — 无背景块 -->
+        <svg :class="$style.logoIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="24" height="24" aria-hidden="true">
+          <path d="M9 18V5l12-2v13" />
+          <circle cx="6" cy="18" r="3" />
+          <circle cx="18" cy="16" r="3" />
         </svg>
       </div>
       <div :class="$style.brandText">
@@ -100,23 +99,17 @@ const toggleCollapse = () => {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background-color: var(--color-primary);
+  // Luminous Harmonic: 透明简笔音符 — 无背景块无投影, 颜色跟随主题
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px -2px var(--color-primary-alpha-700, rgba(173, 198, 255, 0.4));
 }
 
 .logoIcon {
-  fill: #fff !important;
-  color: #fff !important;
-  width: 22px;
-  height: 22px;
-
-  * {
-    fill: #fff !important;
-    color: #fff !important;
-  }
+  display: block;
+  color: var(--color-primary);
+  width: 26px;
+  height: 26px;
 }
 
 .brandText {

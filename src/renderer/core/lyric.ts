@@ -1,7 +1,6 @@
 import Lyric from '@common/utils/lyric-font-player'
 import { getAnalyser, getCurrentTime as getPlayerCurrentTime } from '@renderer/plugins/player'
 import { lyric, setLines, setOffset, setTempOffset, setText } from '@renderer/store/player/lyric'
-import { playProgress } from '@renderer/store/player/playProgress'
 import { isPlay, musicInfo } from '@renderer/store/player/state'
 import { setStatusText } from '@renderer/store/player/action'
 import { markRawList } from '@common/utils/vueTools'
@@ -249,7 +248,11 @@ export const play = (time?: number) => {
   // if (!musicInfo.lrc) return
   // 歌词引擎内部按毫秒（lines[].time 为毫秒）；传入的 time 为秒，需转毫秒，
   // 否则 seek 后 _findCurLineNum 用秒比较毫秒永远命中第一行（歌词从第一个字开始）
-  const currentTimeMs = (time ?? playProgress.nowPlayTime ?? getCurrentTime()) * 1000
+  // Luminous Harmonic: 未显式传时间时优先取播放元素「实时」时间 —
+  // 此前优先用 playProgress.nowPlayTime（store 残留值）, 播放完自动切歌时它是
+  // 旧歌最后一次 timeupdate 的末尾时间, 新歌词会先跳到末尾再跳回开头 (乱跳)。
+  // 播放元素的 currentTime 在任何切歌路径下都是准确的当前播放位置。
+  const currentTimeMs = (time ?? getPlayerCurrentTime()) * 1000
   lrc.play(currentTimeMs)
   sendDesktopLyricInfo({ action: 'set_play', data: currentTimeMs })
 }
