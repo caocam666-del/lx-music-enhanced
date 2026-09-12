@@ -453,8 +453,8 @@ export default {
   left: 50%;
   top: 40%;
   opacity: .88;
-  -webkit-mask-image: radial-gradient(circle, #000 58%, rgb(0 0 0 / .82) 82%, transparent 100%);
-  mask-image: radial-gradient(circle, #000 58%, rgb(0 0 0 / .82) 82%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 58%, rgb(0 0 0 / .82) 82%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 58%, rgb(0 0 0 / .82) 82%, transparent 100%);
   animation: flow-drift-primary 54s ease-in-out infinite alternate;
 }
 .flowSecondary {
@@ -463,8 +463,8 @@ export default {
   left: 84%;
   top: 68%;
   opacity: .32;
-  -webkit-mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
-  mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
   animation: flow-drift-secondary 40s ease-in-out infinite alternate;
 }
 .flowLight {
@@ -473,8 +473,8 @@ export default {
   left: 16%;
   top: 72%;
   opacity: .22;
-  -webkit-mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
-  mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
   animation: flow-drift-light 30s ease-in-out infinite alternate;
 }
 .flowTex {
@@ -698,7 +698,7 @@ export default {
   place-items: center;
   border-radius: 50%;
   color: rgb(255 255 255 / .86);
-  background: radial-gradient(circle, color-mix(in srgb, var(--detail-accent-color) 70%, transparent), color-mix(in srgb, var(--color-app-background) 86%, transparent));
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--detail-accent-color) 70%, transparent), color-mix(in srgb, var(--color-app-background) 86%, transparent));
   font: 700 28px Consolas, monospace;
 }
 .soundField {

@@ -104,18 +104,20 @@ export default {
     } = useLyric({ isPlay, lyric, playProgress, isShowLyricProgressSetting })
 
     // Luminous Harmonic: 对齐 Pure-music 歌词渲染 (lyrics_line_painter) —
-    // 只有当前行取色突出 (mainColor = primary), 其余所有行 (已播/未播) 统一
-    // neutralBase (白) 低透明度 0.40 + 随距离递增的轻微模糊 (blurSigmaStep 0.6,
-    // blurSigmaMax 2.5), 无阴影无光晕 — 这就是 Pure-music 歌词"干净"的来源
+    // 只有当前行取色突出 (mainColor = primary), 其余行统一纯白低透明度.
+    // 距离模糊/渐隐受设置页「歌词模糊化」(playDetail.isLyricBlur) 控制:
+    //  开启 → 未播放行随距离轻微模糊 (blurSigmaStep 0.6, blurSigmaMax 2.5);
+    //  关闭 (.lyricSharp) → 所有行完全清晰, 仅按距离轻微渐隐
     const applyLyricDepth = (line) => {
       const container = dom_lyric.value
       if (!container) return
+      const allowBlur = isLyricBlur.value
       const els = container.querySelectorAll('.line-content')
       els.forEach((el, i) => {
         const dist = Math.abs(i - line)
-        const opacity = dist === 0 ? 1 : 0.42
+        const opacity = dist === 0 ? 1 : (allowBlur ? 0.55 : 0.85)
         const scale = dist === 0 ? (isZoomActiveLrc.value ? 1.16 : 1) : 0.90
-        const blur = dist === 0 ? 0 : Math.min(2.5, dist * 0.6)
+        const blur = dist === 0 || !allowBlur ? 0 : Math.min(2.5, dist * 0.6)
         if (dist === 0) el.style.transitionDelay = '0ms'
         el.style.opacity = opacity
         el.style.transform = `scale(${scale})`
@@ -170,6 +172,10 @@ export default {
     watch(() => lyric.line, (line, oldLine) => {
       applyLyricDepth(line)
       applyStagger(line, oldLine)
+    })
+    // Luminous Harmonic: 切换「歌词模糊化」设置时立即重算行的透明度/模糊
+    watch(isLyricBlur, () => {
+      applyLyricDepth(lyric.line)
     })
     const dom_lrc_select_content = useSelectAllLrc()
 
@@ -337,10 +343,10 @@ export default {
       line-height: 1.3;
       padding: calc(var(--playDetail-lrc-font-size, 16px) * .52) 10px;
       overflow-wrap: break-word;
-      // Luminous Harmonic: Pure-music 规则 — 非当前行 = 纯白 0.40, 无阴影无光晕
-      // (颜色的"干净"来自: 只给当前行上色, 其余行统一低透明度白 + 轻微距离模糊)
+      // Luminous Harmonic: Pure-music 规则 — 非当前行 = 纯白低透明度, 无阴影无光晕
+      // (颜色的"干净"来自: 只给当前行上色, 其余行统一低透明度白 + 可选的距离模糊)
       color: var(--detail-font-bright, var(--color-font));
-      opacity: .42;
+      opacity: .55;
       transform: scale(.90);
       transform-origin: center;
       // Luminous Harmonic: 距离衰减（opacity/scale/filter 平滑过渡）
