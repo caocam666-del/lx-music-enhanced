@@ -167,14 +167,13 @@ export default {
       }
       const accent = `rgb(${coverAccent.value})`
       document.documentElement.style.setProperty('--detail-accent-color', accent)
-      // 亮度阈值: 过暗的封面主色混白提亮（强调用途）
+      // Luminous Harmonic: UI 强调色 = 主题色 (Pure-music 方案) — Pure-music 的进度条/按钮/当前行歌词
+      // 全部用 Material3 scheme.primary (主题种子色, 色调映射保证可读), 封面色只负责背景氛围.
+      // 封面原始色当强调色在灰白/深色封面上必然发虚 (用户反馈), 主题色则任何背景下都清晰.
+      document.documentElement.style.setProperty('--detail-accent-bright', 'var(--color-primary)')
+      // 强调色上的文字对比色（Pure-music: luminance > 0.179 用黑, 否则白）
       const parts = String(coverAccent.value).split(',').map(n => Number(n) || 0)
       const luminance = (parts[0] * 299 + parts[1] * 587 + parts[2] * 114) / 1000
-      const whiteMix = luminance < 120 ? 0.5 : (luminance < 180 ? 0.22 : 0)
-      document.documentElement.style.setProperty('--detail-accent-bright', whiteMix > 0
-        ? `color-mix(in srgb, ${accent} ${Math.round((1 - whiteMix) * 100)}%, white)`
-        : accent)
-      // 强调色上的文字对比色（Pure-music: luminance > 0.179 用黑, 否则白）
       document.documentElement.style.setProperty('--detail-on-accent', luminance > 140 ? '#111318' : '#ffffff')
       // 中性高对比文字色：文字固定近白; 阴影从旧版重阴影 (3px + 12px 光晕) 减为
       // Pure-music 式轻贴边影 — 背景已是柔和色场, 重阴影只会显脏
@@ -443,6 +442,9 @@ export default {
   z-index: -2;
   pointer-events: none;
   overflow: hidden;
+  // Luminous Harmonic: 节奏律动的「亮度脉动」分量 — 静止 0.85, 鼓点峰值 1.0,
+  // 律动读作流光呼吸; 几何缩放幅度也已减半, 封面/歌词完全不受影响
+  opacity: ~"min(1, 0.85 + (var(--flow-breath, 1) - 1) * 2)";
 }
 .flowMask {
   position: absolute;
@@ -711,7 +713,7 @@ export default {
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
   // Luminous Harmonic: SVG color 继承 — 让频谱条读 accent (详情页 accent 透传)
-  color: var(--detail-accent-color, var(--color-primary)) !important;
+  color: var(--detail-accent-bright, var(--color-primary)) !important;
   pointer-events: none;
   overflow: visible !important;
 }

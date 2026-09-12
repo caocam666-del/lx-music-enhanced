@@ -43,7 +43,8 @@ export default (enabled) => {
       smoothLevel *= 0.92
       transient *= 0.88
     }
-    const breath = Math.min(1.3, 1 + Math.max(0, level) * 0.09 + transient * 0.26)
+    // 幅度较 Pure-music 收敛一半 (0.05/0.15, cap 1.18): 原版比例在整屏色场上观感过强
+    const breath = Math.min(1.18, 1 + Math.max(0, level) * 0.05 + transient * 0.15)
     document.documentElement.style.setProperty('--flow-breath', breath.toFixed(4))
   }
 
