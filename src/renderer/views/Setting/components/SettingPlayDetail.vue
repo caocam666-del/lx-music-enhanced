@@ -38,7 +38,7 @@ dd
         :class="[$style.accentSwatch, $style.customSwatch, { [$style.accentActive]: isCustomAccent }]"
         :title="$t('setting__play_detail_ui_accent_custom')" :aria-label="$t('setting__play_detail_ui_accent_custom')"
       )
-        input(type="color" :class="$style.colorInput" value="#7cc7e8" @input="handleCustomAccent")
+        input(type="color" :class="$style.colorInput" value="#7cc7e8" @input="handleCustomAccent" @change="handleCustomAccent")
         svg(v-if="isCustomAccent" :class="$style.customCheck" viewBox="0 0 24 24" aria-hidden="true")
           path(fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M4 12l5 5L20 6")
 
