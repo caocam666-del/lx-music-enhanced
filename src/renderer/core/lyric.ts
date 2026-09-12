@@ -3,6 +3,7 @@ import { getAnalyser, getCurrentTime as getPlayerCurrentTime } from '@renderer/p
 import { lyric, setLines, setOffset, setTempOffset, setText } from '@renderer/store/player/lyric'
 import { isPlay, musicInfo } from '@renderer/store/player/state'
 import { setStatusText } from '@renderer/store/player/action'
+import { playProgress } from '@renderer/store/player/playProgress'
 import { markRawList } from '@common/utils/vueTools'
 import { appSetting, updateSetting } from '@renderer/store/setting'
 import { onNewDesktopLyricProcess } from '@renderer/utils/ipc'
@@ -207,7 +208,15 @@ export const setLyric = () => {
 
   if (isPlay.value) {
     setTimeout(() => {
-      const time = getCurrentTime() * 1000
+      let time = getCurrentTime() * 1000
+      const lines = lrc.linePlayer?.lines
+      const lyricDuration = lines?.length ? lines[lines.length - 1].time : Infinity
+      // Luminous Harmonic: 换曲加载窗口内 getCurrentTime() 可能是旧元素的残留时间
+      // (自然播完时停在旧歌末尾). 判别: 残留时间超出新歌词时长, 或落在旧歌时长
+      // 末尾 1.5s 内 → 新歌从 0 开始同步; 其余 (跨fade晋升, 新歌确已播放几秒)
+      // → 保留实时时间. 不做此处理, 引擎会继承旧内部时钟卡在末尾不再跟随.
+      const oldMax = (playProgress.maxPlayTime || 0) * 1000
+      if (time > lyricDuration + 30000 || (oldMax > 0 && oldMax - time < 1500)) time = 0
       sendDesktopLyricInfo({ action: 'set_play', data: time })
       lrc.play(time)
     })

@@ -866,6 +866,12 @@ export const setMute = (isMute: boolean) => {
   if (audio) audio.muted = isMute
 }
 
+// Luminous Harmonic: 音频元素是否正在实际播放 (未暂停/未结束) —
+// 换曲加载窗口内 currentTime 是旧音源的残留值, 歌词同步需要区分这种情况
+export const isAudioActivelyPlaying = () => {
+  return !!audio && !audio.paused && !audio.ended
+}
+
 export const getCurrentTime = () => {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return audio?.currentTime || 0
