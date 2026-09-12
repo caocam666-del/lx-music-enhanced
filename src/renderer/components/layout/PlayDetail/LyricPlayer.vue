@@ -104,20 +104,21 @@ export default {
     } = useLyric({ isPlay, lyric, playProgress, isShowLyricProgressSetting })
 
     // Luminous Harmonic: 对齐 Pure-music 歌词渲染 (lyrics_line_painter) —
-    // 只有当前行取色突出 (mainColor = primary), 其余行统一纯白低透明度.
-    // 距离模糊/渐隐受设置页「歌词模糊化」(playDetail.isLyricBlur) 控制:
-    //  开启 → 未播放行随距离轻微模糊 (blurSigmaStep 0.6, blurSigmaMax 2.5);
-    //  关闭 (.lyricSharp) → 所有行完全清晰, 仅按距离轻微渐隐
+    // 只有当前行取色; 已播放行 = 纯白 1.0 (playedColor = neutralBase α1.0),
+    // 未播放行 = 纯白低透明度 (unplayedColor α0.40). 距离模糊受「歌词模糊化」
+    // (playDetail.isLyricBlur) 控制: 开启 → 未播放行模糊上限 1.5px; 关闭 → 全部清晰
     const applyLyricDepth = (line) => {
       const container = dom_lyric.value
       if (!container) return
       const allowBlur = isLyricBlur.value
       const els = container.querySelectorAll('.line-content')
       els.forEach((el, i) => {
-        const dist = Math.abs(i - line)
-        const opacity = dist === 0 ? 1 : (allowBlur ? 0.55 : 0.85)
-        const scale = dist === 0 ? (isZoomActiveLrc.value ? 1.16 : 1) : 0.90
-        const blur = dist === 0 || !allowBlur ? 0 : Math.min(2.5, dist * 0.6)
+        const dist = i - line // 有符号: <0 已播放, =0 当前行, >0 未播放
+        const abs = Math.abs(dist)
+        const opacity = abs === 0 ? 1 : (dist < 0 ? 1 : (allowBlur ? 0.55 : 0.85))
+        const scale = abs === 0 ? (isZoomActiveLrc.value ? 1.16 : 1) : 0.90
+        // 模糊只作用于「未播放」行且仅在模糊化开启时; 已播放行永远清晰纯白
+        const blur = (allowBlur && dist > 0) ? Math.min(1.5, dist * 0.5) : 0
         if (dist === 0) el.style.transitionDelay = '0ms'
         el.style.opacity = opacity
         el.style.transform = `scale(${scale})`
@@ -381,8 +382,10 @@ export default {
         // 取色靠颜色本身, 发光只会让字发糊
         text-shadow: none;
       }
-      &.line-mode.active .font-lrc, &.font-mode.played .font-lrc, &.font-mode.active .font-lrc {
-        // Luminous Harmonic: 当前行用亮化版 accent（低亮度封面主色直接做文字色会发虚）
+      // Luminous Harmonic: Pure-music 规则 — 取色只作用于「当前行」(.active);
+      // 已播放行 (.font-mode.played) 是干净的纯白, 绝不取色
+      &.line-mode.active .font-lrc, &.font-mode.active .font-lrc {
+        // 当前行用亮化版 accent（低亮度封面主色直接做文字色会发虚）
         color: var(--detail-accent-bright, var(--detail-accent-color, var(--color-primary)));
         font-weight: 600;
       }
@@ -397,12 +400,19 @@ export default {
           transition-property: font-size;
           font-size: 1em;
           background-repeat: no-repeat;
-          // Luminous Harmonic: 未唱字底色用近白（封面取色模式），清晰不虚
+          // Luminous Harmonic: 非当前行的 span 一律纯白填充 — 引擎会给已唱 span 留下
+          // played 渐变状态, 若不覆盖, 已播放行会整行取色 (Pure-music 取色仅限当前行)
           background-color: color-mix(in srgb, var(--detail-font-bright, var(--color-font)) 76%, transparent);
-          background-image: -webkit-linear-gradient(top, var(--detail-accent-color, var(--color-primary)), var(--detail-accent-color, var(--color-primary)));
           -webkit-text-fill-color: transparent;
           -webkit-background-clip: text;
           background-size: 0 100%;
+        }
+      }
+      // 已唱渐变只出现在当前行 — 已播放行保持纯白
+      &.font-mode.active > .line > .font-lrc {
+        > span {
+          // 已唱部分渐变用亮化版 accent — 原始 accent 在暗封面下接近黑色, 歌词会"消失"
+          background-image: -webkit-linear-gradient(top, var(--detail-accent-bright, var(--detail-accent-color, var(--color-primary))), var(--detail-accent-bright, var(--detail-accent-color, var(--color-primary))));
         }
       }
       // Luminous Harmonic: 间奏/纯音乐空行 → 三点呼吸动画（Pure-music 同款）
