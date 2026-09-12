@@ -1,5 +1,6 @@
 <template>
-  <material-modal frosted :show="modelValue" bg-close teleport="#view" width="680px" max-height="86%" @close="handleClose">
+  <!-- teleport 用 #root (路由树之外) — #view 会在路由切换时因锚点失效引发 insertBefore 崩溃 (同 WallpaperEngineModal) -->
+  <material-modal frosted :show="modelValue" bg-close teleport="#root" width="680px" max-height="86%" @close="handleClose">
     <main class="scroll" :class="$style.main">
       <header :class="$style.title">
         <h2>{{ $t('netease__title') }}</h2>
@@ -159,7 +160,8 @@ export default {
       qrStatus.value = t('netease__qr_loading')
       try {
         qrKey.value = await loginQrKey()
-        const created = await loginQrCreate(qrKey)
+        // 注意必须传 .value — 传 ref 对象会被模板字符串转成 "[object Object]", 扫出的码无效
+        const created = await loginQrCreate(qrKey.value)
         qrImage.value = created.qrimg
         qrStatus.value = t('netease__qr_waiting')
         scheduleQrPoll()

@@ -36,7 +36,9 @@ export default ({ position, message, autoCloseTime } = {}, props) => {
   document.body.appendChild(instance.$el)
 
   instance.cancel = () => {
-    props.beforeClose(instance)
+    // Luminous Harmonic: beforeClose 是可选的 — useUpdate 等调用方不传第二参数,
+    // 这里直接抛 TypeError 会让 visible=false 永远执行不到, 提示卡死在屏幕上无法消失
+    props?.beforeClose?.(instance)
     clearAutoCloseTimer(instance)
     instance.visible = false
     instance = null
