@@ -8,14 +8,17 @@ transition(
   @after-enter="handleAfterEnter" @after-leave="handleAfterLeave")
   .container(v-if="isShowPlayerDetail" :class="{ fullscreen: isFullscreen, playing: isPlay, paused: !isPlay, themeBackground: appSetting['playDetail.backgroundMode'] == 'theme' }" :style="detailStyle" @contextmenu="handleContextMenu")
     .bg
-    //- Luminous Harmonic: 流光层 (Pure-music FlowingLight 手法) — 三层封面图
-    //- 以不同缩放 (1.30/1.50/1.76) / 周期 (54s/40s/30s) / 相位缓慢交错漂移,
-    //- 轻模糊 σ12 保留封面色彩层次 (替代旧版 blur(36px) 整体糊 + 机械旋转)
+    //- Luminous Harmonic: 流光层 — 1:1 移植 Pure-music FlowingLightBackground 算法:
+    //- 蒙版固定在视口 (主层 50%,40% / 副层 84%,68% / 光层 16%,72% 三个大圆斑),
+    //- 封面纹理在斑内缓慢旋转 (54s/40s/30s, 副层/光层反向), 色斑只贡献"颜色场",
+    //- 完全看不出原图结构 (旧版把封面放大模糊, 结构可见 → 显脏)
     .bgFlow(v-if="musicInfo.pic")
-      span.bgFlowLayer.bgFlow1
-      span.bgFlowLayer.bgFlow2
-      span.bgFlowLayer.bgFlow3
-    .bgWash
+      span.flowMask.flowPrimary
+        i.flowTex
+      span.flowMask.flowSecondary
+        i.flowTex
+      span.flowMask.flowLight
+        i.flowTex
     //- Luminous Harmonic: 亮度自适应蒙层（Pure-music 思路）— 封面亮 → 蒙层加深,
     //- 把背景亮度钳制在暗区, 保证任何封面色下文字/UI 都清晰
     .bgScrim
@@ -170,17 +173,16 @@ export default {
         : accent)
       // 强调色上的文字对比色（Pure-music: luminance > 0.179 用黑, 否则白）
       document.documentElement.style.setProperty('--detail-on-accent', luminance > 140 ? '#111318' : '#ffffff')
-      // 中性高对比文字色：封面取色背景深浅不定，文字固定用近白 + 阴影保证清晰
+      // 中性高对比文字色：文字固定近白; 阴影从旧版重阴影 (3px + 12px 光晕) 减为
+      // Pure-music 式轻贴边影 — 背景已是柔和色场, 重阴影只会显脏
       document.documentElement.style.setProperty('--detail-font-bright', '#f4f5f7')
-      document.documentElement.style.setProperty('--detail-font-shadow', '0 1px 3px rgb(0 0 0 / .7), 0 0 12px rgb(0 0 0 / .45)')
+      document.documentElement.style.setProperty('--detail-font-shadow', '0 1px 2px rgb(0 0 0 / .30)')
       // Luminous Harmonic: 歌词专用轻阴影 — 只留 1px 贴边暗线保可读性 (含 12px 光晕的
       // --detail-font-shadow 挂到全部歌词行会在暗背景上显"脏", 用户反馈)
       document.documentElement.style.setProperty('--detail-lyric-shadow', '0 1px 2px rgb(0 0 0 / .4)')
-      // Luminous Harmonic: 亮度自适应蒙层（Pure-music 背景亮度钳制思路）
-      // 流光层已自带 brightness(.72) 预压暗 (Pure-music dark style), 蒙层只需轻度收尾 —
-      // 封面越亮蒙层略深, 保证文字/UI 清晰且不发闷
-      const scrim = luminance < 70 ? 0.26 : (luminance < 140 ? 0.36 : 0.46)
-      document.documentElement.style.setProperty('--detail-scrim-opacity', String(scrim))
+      // Luminous Harmonic: 收尾蒙层 — 流光层已带 brightness(.72) 预压暗 (Pure-music dark
+      // style), 不再按封面亮度分档加深 (会发闷), 固定轻蒙层即可保证文字/UI 清晰
+      document.documentElement.style.setProperty('--detail-scrim-opacity', '0.14')
     }
     watch([() => appSetting['playDetail.backgroundMode'], coverAccent, isShowPlayerDetail], writeAccentToRoot, { immediate: true })
     watch([coverPalette, isShowPlayerDetail, () => appSetting['playDetail.backgroundMode']], writePaletteVars)
@@ -382,7 +384,7 @@ export default {
   contain: strict;
   isolation: isolate;
   box-sizing: border-box;
-  // Luminous Harmonic: 流光模糊背景透出 → 容器背景半透明（让 .bgCoverBlur 可见）
+  // Luminous Harmonic: 容器背景半透明 → 让底层 .bg 中性基底透出
   background-color: color-mix(in srgb, var(--color-content-background) 78%, transparent);
 
   * { box-sizing: border-box; }
@@ -393,24 +395,23 @@ export default {
   height: 100%;
   top: 0;
   left: 0;
-  // Luminous Harmonic: 基底 — Pure-music 的中性底 + accent 轻染色
-  // (不再承担流光主体, 也不做 36px 大模糊/旋转 — 那会把封面细节全部糊掉)
-  background:
-    linear-gradient(165deg,
-      color-mix(in srgb, var(--detail-accent-color) 16%, var(--color-app-background)),
-      var(--color-app-background) 58%,
-      color-mix(in srgb, var(--detail-pal-1, var(--detail-accent-color)) 12%, var(--color-app-background)));
+  // Luminous Harmonic: 中性基底 — Pure-music _kDarkNeutralBackground #171717 / light #F0F0F0
+  // (accent 仅极轻染色, 色彩场全部交给流光层)
+  background: linear-gradient(175deg,
+    color-mix(in srgb, var(--detail-accent-color) 7%, var(--luminous-bg-base, #171717)),
+    var(--luminous-bg-base, #171717) 70%);
   z-index: -3;
 }
-// Luminous Harmonic: 亮度自适应蒙层（Pure-music 思路）
-// 位于所有背景层之上、内容层之下；封面越亮蒙层越深，背景亮度被钳制在暗区
+// Luminous Harmonic: 收尾蒙层 — 流光层已带 brightness(.72) 预压暗 (Pure-music dark style),
+// 只需固定轻蒙层 + Pure-music 式边缘渐晕 (edgeAlpha 0.05, 略加强保证 UI 可读)
 .bgScrim {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: rgb(0 0 0 / var(--detail-scrim-opacity, .45));
-  transition: background-color .45s ease;
+  background:
+    radial-gradient(120% 120% at 50% 50%, transparent 62%, rgb(0 0 0 / .1) 100%),
+    rgb(0 0 0 / .1);
 }
 .themeBackground {
   .bg {
@@ -426,60 +427,121 @@ export default {
     background-position: center, center, center, center, center, center, center;
   }
 }
-// Luminous Harmonic: 流光层 — Pure-music FlowingLightBackground 三层封面手法:
-// 同一张封面以三档缩放 (1.30/1.50/1.76) 与三个周期 (54s/40s/30s) 交错漂移,
-// 轻模糊 σ12 + 饱和 1.18 + 暗色亮度 .72 (Pure-music dark style), 保留封面色彩层次.
-// 主层不透明度接近原作 224/255, 副层/光层按 82/56 等比.
+// Luminous Harmonic: 流光层 — Pure-music FlowingLightBackground 的 CSS 移植.
+// 原算法: 封面解码 512px → 三层 1.30/1.50/1.76 缩放、54s/40s/30s 周期旋转, 每层用
+// 「视口固定的径向蒙版」只露出一块圆形色斑 (primary 中心 50%,40% r1.12 / secondary
+// 84%,68% r0.95 / light 16%,72% r0.95, 蒙版三段衰减 58%/82%/100%), 层透明度 224/82/56,
+// 暗色风格 saturate 1.18 + brightness 0.72, 整体 320px 低分辨率渲染再放大 → 只见颜色场不见原图.
+// CSS 复刻: 蒙版挂在不旋转的父层 (色斑位置恒定), 封面纹理在子层旋转,
+// 纹理静态 blur(64px) 一次栅格化 (≈ σ12@320px 放大到全屏的柔化度).
 .bgFlow {
   position: absolute;
-  inset: -16%;
+  inset: 0;
   z-index: -2;
   pointer-events: none;
   overflow: hidden;
 }
-.bgFlowLayer {
+.flowMask {
   position: absolute;
-  inset: 0;
+  overflow: hidden;
+  translate: -50% -50%;
+  will-change: transform;
+}
+.flowPrimary {
+  width: 224vmin;
+  height: 224vmin;
+  left: 50%;
+  top: 40%;
+  opacity: .88;
+  -webkit-mask-image: radial-gradient(circle, #000 58%, rgb(0 0 0 / .82) 82%, transparent 100%);
+  mask-image: radial-gradient(circle, #000 58%, rgb(0 0 0 / .82) 82%, transparent 100%);
+  animation: flow-drift-primary 54s ease-in-out infinite alternate;
+}
+.flowSecondary {
+  width: 190vmin;
+  height: 190vmin;
+  left: 84%;
+  top: 68%;
+  opacity: .32;
+  -webkit-mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  animation: flow-drift-secondary 40s ease-in-out infinite alternate;
+}
+.flowLight {
+  width: 190vmin;
+  height: 190vmin;
+  left: 16%;
+  top: 72%;
+  opacity: .22;
+  -webkit-mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  mask-image: radial-gradient(circle, #000 52%, rgb(0 0 0 / .39) 82%, transparent 100%);
+  animation: flow-drift-light 30s ease-in-out infinite alternate;
+}
+.flowTex {
+  position: absolute;
+  // 纹理尺度 ≈ 视口 (160vmin): 封面按此尺度铺开, 三个斑各自看到封面的不同区域
+  // (对齐 Pure-music 的 viewport×1.30 crop), 旋转绕斑心, 对角半径 113vmin 恰好盖住蒙版衰减区
+  left: 50%;
+  top: 50%;
+  width: 160vmin;
+  height: 160vmin;
+  margin: -80vmin 0 0 -80vmin;
   background-image: var(--detail-cover-image);
   background-size: cover;
   background-position: center;
-  filter: blur(12px) saturate(1.18) brightness(.72);
+  // Pure-music 暗色风格: saturate 1.18 + brightness 0.8 (黑抬升由基底近似);
+  // blur 一次栅格化, 旋转只动 transform, 模糊零重复开销
+  filter: blur(48px) saturate(1.25) brightness(.88);
   will-change: transform;
+  animation: flow-rotate-1 54s linear infinite;
 }
-.bgFlow1 {
-  opacity: .88;
-  animation: detail-flow-1 54s ease-in-out infinite alternate;
+// Luminous Harmonic: 色彩分离的关键 — 三个斑采样封面的不同区域
+// (Pure-music 靠每层的 texture offset 0.41/-0.42 实现同效), 否则全部糊成一种颜色
+.flowSecondary .flowTex {
+  background-position: 76% 64%;
+  animation: flow-rotate-2 40s linear infinite reverse;
 }
-.bgFlow2 {
-  opacity: .32;
-  animation: detail-flow-2 40s ease-in-out infinite alternate;
+.flowLight .flowTex {
+  background-position: 24% 70%;
+  animation: flow-rotate-3 30s linear infinite reverse;
 }
-.bgFlow3 {
-  opacity: .2;
-  animation: detail-flow-3 30s ease-in-out infinite alternate;
+// 暂停时整个流光场静止 (对齐 Pure-music: 非播放态 flow speed = 0)
+.container.paused {
+  .flowMask,
+  .flowTex {
+    animation-play-state: paused;
+  }
 }
-@keyframes detail-flow-1 {
-  from { transform: scale(1.30) translate(-2%, 1.5%); }
-  to { transform: scale(1.44) translate(2%, -2%); }
+@keyframes flow-rotate-1 {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-@keyframes detail-flow-2 {
-  from { transform: scale(1.50) translate(2%, 2%); }
-  to { transform: scale(1.36) translate(-2.5%, -1%); }
+@keyframes flow-rotate-2 {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-@keyframes detail-flow-3 {
-  from { transform: scale(1.76) translate(0, -2%); }
-  to { transform: scale(1.60) translate(-1.5%, 2.5%); }
+@keyframes flow-rotate-3 {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+// 色斑位置的正弦微漂移 (Pure-music driftAmp 0.052 的收敛近似)
+@keyframes flow-drift-primary {
+  0% { transform: translate(-2.6%, 2.6%); }
+  50% { transform: translate(0, -2.2%); }
+  100% { transform: translate(2.6%, -1.2%); }
+}
+@keyframes flow-drift-secondary {
+  0% { transform: translate(2.2%, 1.8%); }
+  50% { transform: translate(-1.8%, 0); }
+  100% { transform: translate(0, -2.2%); }
+}
+@keyframes flow-drift-light {
+  0% { transform: translate(-2.4%, -2%); }
+  50% { transform: translate(2%, 1.6%); }
+  100% { transform: translate(-1.2%, 2.2%); }
 }
 // 主题模式无封面流光 — 省去三层合成
 .themeBackground .bgFlow { display: none; }
-.bgWash {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  // Luminous Harmonic: 仅保留轻渐变洗色 (原 backdrop-filter blur8 会把流光层再糊一遍, 伤清晰度)
-  background: linear-gradient(110deg, color-mix(in srgb, var(--detail-accent-color) 10%, transparent), transparent 42%), linear-gradient(180deg, transparent, color-mix(in srgb, var(--color-main-background) 20%, transparent));
-}
 
 .main {
   flex: auto;
@@ -524,23 +586,22 @@ export default {
 }
 .singer {
   margin-top: 8px;
-  font-size: 14px;
-  // Luminous Harmonic: 封面取色模式近白、主题模式回退主题文字色
+  // Luminous Harmonic: Pure-music 歌手规格 — 16px / onSurface 70% / 无重阴影
+  font-size: 16px;
   color: var(--detail-font-bright, var(--color-font));
-  opacity: .95;
-  // Luminous Harmonic: 阴影统一走 --detail-font-shadow，避免主题模式下发脏
-  text-shadow: var(--detail-font-shadow, 0 1px 3px rgb(0 0 0 / .7));
+  opacity: .7;
+  text-shadow: var(--detail-font-shadow, none);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 // Luminous Harmonic: 专辑行（Pure-music 信息层级：标题/艺术家/专辑）
 .album {
-  margin-top: 6px;
+  margin-top: 5px;
   font-size: 12px;
   color: var(--detail-font-bright, var(--color-font));
-  opacity: .8;
-  text-shadow: var(--detail-font-shadow, none);
+  opacity: .7;
+  text-shadow: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -678,6 +739,7 @@ export default {
 // Luminous Harmonic: 右栏视图切换按钮（歌词/播放列表两态循环）— 与 followBtn 同款玻璃小圆钮
 // top 74px = 顶栏 60px + 14px，对齐右栏顶部，避开顶栏右侧的窗口控制按钮
 @media (prefers-reduced-motion: reduce) {
-  .bgFlowLayer { animation: none; }
+  .flowMask,
+  .flowTex { animation: none; }
 }
 </style>
