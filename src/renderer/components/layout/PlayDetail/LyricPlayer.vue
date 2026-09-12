@@ -317,6 +317,15 @@ export default {
   height: 100%;
   overflow: hidden;
   font-size: var(--playDetail-lrc-font-size, 16px);
+  // Luminous Harmonic: 长句歌词换行兜底 — 引擎的行元素是 inline-block,
+  // 大字号下可能超出容器被裁切; 强制限制在容器内并允许任意断行
+  [class*='line'] {
+    max-width: 100% !important;
+    white-space: normal !important;
+  }
+  .line-content {
+    overflow-wrap: anywhere;
+  }
   // Luminous Harmonic: 歌词模糊化 — 打开时上下渐隐 + 行柔影；关闭时（.lyricSharp）完全清晰
   -webkit-mask-image: linear-gradient(transparent 0%, #fff 14%, #fff 78%, transparent 100%);
   mask-image: linear-gradient(transparent 0%, #fff 14%, #fff 78%, transparent 100%);

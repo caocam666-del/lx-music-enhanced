@@ -712,28 +712,16 @@ export default {
 }
 .artwork {
   position: relative;
-  // Luminous Harmonic: 尺寸同时受宽高约束（Pure-music min(maxWidth, maxHeight-reserved) 思路）—
-  // 矮窗口时封面收缩而不是把歌名/歌手区裁掉; 140px 兜底防止极端比例下消失
+  // Luminous Harmonic: 干净的旋转封面 — 无留白/无渐变环/无白线圈
+  // (用户反馈: 去掉封面外的留白和两圈白线); 尺寸约束保持
   width: min(clamp(220px, 24vw, 320px), max(140px, calc(100vh - 380px)));
   min-width: 0;
   aspect-ratio: 1;
-  display: grid;
-  place-items: center;
   border-radius: 50%;
-  padding: 10px;
-  background: conic-gradient(from 20deg, color-mix(in srgb, var(--detail-accent-color) 72%, transparent), rgb(255 255 255 / .16), color-mix(in srgb, var(--detail-accent-color) 24%, transparent), color-mix(in srgb, var(--color-app-background) 70%, transparent), color-mix(in srgb, var(--detail-accent-color) 72%, transparent));
-  box-shadow: 0 22px 60px color-mix(in srgb, var(--color-app-background) 34%, transparent), 0 0 0 1px rgb(255 255 255 / .16), 0 0 70px color-mix(in srgb, var(--detail-accent-color) 26%, transparent);
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgb(0 0 0 / .35);
   isolation: isolate;
   z-index: 1;
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 4px;
-    border: 1px solid rgb(255 255 255 / .22);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 1;
-  }
 }
 .img {
   width: 100%;

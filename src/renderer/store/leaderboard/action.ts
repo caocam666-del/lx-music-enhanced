@@ -55,7 +55,9 @@ export const getListDetail = async(id: string, page: number, isRefresh = false):
 
   return musicSdk[source]?.leaderboard?.getList(bangId, page).then((result: ListDetailInfo) => {
     result.list = markRawList(deduplicationList(result.list.map(m => toNewMusicInfo(m)) as LX.Music.MusicInfoOnline[]))
-    cache.set(key, result)
+    // Luminous Harmonic: 空结果不缓存 (瞬时失败/空响应曾被永久缓存, 导致排行榜无法切换)
+    if (result.list.length) cache.set(key, result)
+    else cache.delete(key)
     return result
   })
 }

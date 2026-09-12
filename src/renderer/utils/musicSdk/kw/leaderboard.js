@@ -208,7 +208,8 @@ export default {
       const rawData = wbdCrypto.decodeData(body)
       // console.log(rawData)
       const data = rawData.data
-      if (statusCode !== 200 || rawData.code != 200 || !data.musiclist) return this.getList(id, page, retryNum)
+      // Luminous Harmonic: 空列表也重试 (瞬时空响应曾被上层永久缓存, 导致榜单无法切换)
+      if (statusCode !== 200 || rawData.code != 200 || !data.musiclist || !data.musiclist.length) return this.getList(id, page, retryNum)
 
       const total = parseInt(data.total)
       const list = this.filterData(data.musiclist)

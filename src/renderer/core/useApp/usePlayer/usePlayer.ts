@@ -27,6 +27,7 @@ import {
 } from '@renderer/store/player/action'
 
 import { appSetting } from '@renderer/store/setting'
+import { isPlay } from '@renderer/store/player/state'
 
 import useLyric from './useLyric'
 import useVolume from './useVolume'
@@ -160,7 +161,21 @@ export default () => {
 
   window.app_event.on('play', setPlayStatus)
   window.app_event.on('pause', setPauseStatus)
-  window.app_event.on('error', setPauseStatus)
+  // Luminous Harmonic: 播放失败自动切歌 — 部分歌曲播放会抛错 (如 Cannot read
+  // properties of undefined), 连续失败 ≤3 次时自动跳下一首, 成功播放后计数清零
+  let consecutivePlayErrors = 0
+  window.app_event.on('error', () => {
+    setPauseStatus()
+    consecutivePlayErrors++
+    if (consecutivePlayErrors <= 3) {
+      setTimeout(() => {
+        if (!isPlay.value) void playNext(true)
+      }, 600)
+    }
+  })
+  window.app_event.on('play', () => {
+    consecutivePlayErrors = 0
+  })
   window.app_event.on('stop', setStopStatus)
   window.app_event.on('musicToggled', handleUpdatePlayInfo)
   window.app_event.on('playerCanplay', handleCanplay)

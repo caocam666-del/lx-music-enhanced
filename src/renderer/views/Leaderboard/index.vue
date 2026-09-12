@@ -64,6 +64,11 @@ export default {
     })
     const router = useRouter()
     const route = useRoute()
+    // Luminous Harmonic: 兜底 — 路由 query 变化直接同步 ref (不依赖组件内守卫的触发时序),
+    // 修复点击榜单后歌曲列表不切换的问题
+    watch(() => route.query.boardId, (id) => { if (id && id != boardId.value) boardId.value = id })
+    watch(() => route.query.source, (src) => { if (src && src != source.value) source.value = src })
+
     const handleToggleSource = (id) => {
       void router.replace({
         path: route.path,
