@@ -153,8 +153,8 @@ const {
   // 强调色上的文字用亮度对比色（Pure-music: luminance>阈值用黑, 否则白）
   color: var(--detail-on-accent, var(--color-on-primary, var(--color-primary-font)));
   // 压暗版 accent 作背景（强调），保证图标对比清晰
-  // Luminous Harmonic: 播放按钮用主题色 — 原始封面色在灰白封面上发虚 (Pure-music UI 强调色 = scheme.primary)
-  background: linear-gradient(150deg, color-mix(in srgb, var(--color-primary) 76%, black), var(--color-primary));
+  // Luminous Harmonic: 播放按钮跟随「功能组件颜色」(--detail-accent-bright) — 与其他组件同源
+  background: linear-gradient(150deg, color-mix(in srgb, var(--detail-accent-bright, var(--color-primary)) 72%, black), var(--detail-accent-bright, var(--color-primary)));
   box-shadow: 0 4px 16px color-mix(in srgb, var(--color-app-background) 42%, transparent), 0 0 0 1px rgb(255 255 255 / .14);
   &:hover {
     color: var(--detail-on-accent, var(--color-on-primary, var(--color-primary-font)));

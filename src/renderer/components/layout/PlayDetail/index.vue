@@ -173,31 +173,46 @@ export default {
       document.documentElement.style.setProperty('--detail-on-accent', luminance > 140 ? '#111318' : '#ffffff')
 
       // Luminous Harmonic: 「功能组件颜色」解析 — 歌词高亮/进度条/按钮的强调色来源:
-      //   'cover'  → 封面取色 (封面主色按亮度混白提亮, 原有行为)
-      //   'rgb(..)' → 用户在设置页选的主题色板颜色
-      // 无论来源, 都做对比度保证: 与背景流光亮度差 ≥ 0.28 (不足时向白/黑方向调整),
-      // 这就是 Pure-music "UI 始终清晰" 的本质 — 强调色永远与背景拉开亮度差.
-      const bgL = Math.min(0.85, (luminance / 255) * 0.72) // 流光经 brightness .88 + 蒙层后的背景亮度估计
-      const lum255 = (rgb) => (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000 / 255
-      const mixToward = (rgb, target, t) => rgb.map((c, i2) => Math.round(c + (target[i2] - c) * t))
-      const ensureContrast = (rgb) => {
-        let L = lum255(rgb)
-        const WHITE = [255, 255, 255]
-        const BLACK = [17, 19, 24]
-        if (Math.abs(L - bgL) >= 0.28) return { rgb, L }
-        // 亮度与背景过近: 亮背景 → 向黑压, 暗背景 → 向白提
-        const target = L >= bgL ? BLACK : WHITE
-        const dir = L >= bgL ? -1 : 1
-        let t = 0.15
-        while (t <= 1) {
-          const mixed = mixToward(rgb, target, t)
-          const mL = lum255(mixed)
-          if (Math.abs(mL - bgL) >= 0.28 || (dir < 0 && mL <= 0.14) || (dir > 0 && mL >= 0.96)) {
-            return { rgb: mixed, L: mL }
-          }
-          t += 0.1
+      //   'cover'   → 封面取色 (保持封面色相, 亮度归入可读区间)
+      //   'rgb(..)' → 用户选的主题色板 / 调色盘颜色
+      // 可读性保证 (Pure-music M3 思路): 背景流光永远偏暗, 把强调色亮度归入
+      // [bgL + 0.28, 0.90] 区间 — 保持色相与饱和, 只提亮度 → 任何封面/所选颜色都清晰,
+      // 且不会被压成黑色 (此前向黑调整导致取色变黑, 用户反馈).
+      const bgL = Math.min(0.62, (luminance / 255) * 0.72) // 背景流光亮度估计 (brightness .88 × 蒙层)
+      const rgbToHsl = (r, g, b) => {
+        const rn = r / 255, gn = g / 255, bn = b / 255
+        const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn)
+        const l = (max + min) / 2
+        if (max === min) return [0, 0, l]
+        const d = max - min
+        const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+        let h = 0
+        if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6
+        else if (max === gn) h = ((bn - rn) / d + 2) / 6
+        else h = ((rn - gn) / d + 4) / 6
+        return [h, s, l]
+      }
+      const hslToRgb = (h, s, l) => {
+        if (s === 0) { const v = Math.round(l * 255); return [v, v, v] }
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+        const p = 2 * l - q
+        const hue = (t) => {
+          if (t < 0) t += 1
+          if (t > 1) t -= 1
+          if (t < 1 / 6) return p + (q - p) * 6 * t
+          if (t < 1 / 2) return q
+          if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+          return p
         }
-        return { rgb: mixToward(rgb, target, 1), L: lum255(mixToward(rgb, target, 1)) }
+        return [hue(h + 1 / 3), hue(h), hue(h - 1 / 3)].map(v => Math.round(v * 255))
+      }
+      // 亮度归入可读区间: 保持色相/饱和, L → clamp(bgL + 0.28, 0.66, 0.90);
+      // 低饱和 (灰白系) 颜色同时补一点饱和 (×1.15) 避免和灰色背景融在一起
+      const readableAccent = (rgb) => {
+        const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2])
+        const targetL = Math.min(0.9, Math.max(0.66, bgL + 0.28))
+        const s2 = Math.min(1, Math.max(s, 0.18) * 1.15)
+        return hslToRgb(h, s2, targetL)
       }
 
       const uiAccent = appSetting['playDetail.uiAccent'] || 'cover'
@@ -213,7 +228,7 @@ export default {
       if (uiAccent === 'cover' && appSetting['playDetail.backgroundMode'] == 'theme') {
         document.documentElement.style.setProperty('--detail-accent-bright', 'color-mix(in srgb, var(--color-primary) 82%, white)')
       } else {
-        const { rgb: finalRgb } = ensureContrast(uiBase)
+        const finalRgb = readableAccent(uiBase)
         document.documentElement.style.setProperty('--detail-accent-bright', `rgb(${finalRgb.join(',')})`)
       }
       // 中性高对比文字色：文字固定近白; 阴影从旧版重阴影 (3px + 12px 光晕) 减为

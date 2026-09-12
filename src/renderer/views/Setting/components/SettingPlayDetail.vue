@@ -33,6 +33,14 @@ dd
         @click="updateSetting({'playDetail.uiAccent': c.value})"
       )
         span(v-if="c.value == 'cover'" :class="$style.coverIcon") {{ $t('setting__play_detail_ui_accent_cover_short') }}
+      // Luminous Harmonic: 调色盘 — 自定义任意颜色 (原生 color input)
+      label(
+        :class="[$style.accentSwatch, $style.customSwatch, { [$style.accentActive]: isCustomAccent }]"
+        :title="$t('setting__play_detail_ui_accent_custom')" :aria-label="$t('setting__play_detail_ui_accent_custom')"
+      )
+        input(type="color" :class="$style.colorInput" value="#7cc7e8" @input="handleCustomAccent")
+        svg(v-if="isCustomAccent" :class="$style.customCheck" viewBox="0 0 24 24" aria-hidden="true")
+          path(fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M4 12l5 5L20 6")
 
 dd
   h3#play_detail_align {{ $t('setting__play_detail_align') }}
@@ -51,21 +59,24 @@ dd
 </template>
 
 <script>
+import { computed } from '@common/utils/vueTools'
 import { appSetting, updateSetting } from '@renderer/store/setting'
 import { setLyricMode } from '@renderer/core/lyric'
 
 // Luminous Harmonic: 主题色板 — 与内置主题 primary 一致 (createThemes.js)
+// Luminous Harmonic: 主题色板 — 取各内置主题 primary 的色相, 统一混白 45% 成淡色系
+// (用户要求: 亮、清晰、干净; 原始 primary 过重过浓)
 const ACCENT_SWATCHES = [
-  { value: 'rgb(0, 74, 198)', label: '流光浅界' },
-  { value: 'rgb(173, 198, 255)', label: '流光夜阑' },
-  { value: 'rgb(77, 175, 124)', label: '绿意盎然' },
-  { value: 'rgb(52, 152, 219)', label: '蓝田生玉' },
-  { value: 'rgb(77, 131, 175)', label: '蛋雅深蓝' },
-  { value: 'rgb(245, 171, 53)', label: '橙黄橘绿' },
-  { value: 'rgb(214, 69, 65)', label: '热情似火' },
-  { value: 'rgb(241, 130, 141)', label: '粉装玉琢' },
-  { value: 'rgb(155, 89, 182)', label: '重斤球紫' },
-  { value: 'rgb(108, 122, 137)', label: '灰常美丽' },
+  { value: 'rgb(115, 155, 224)', label: '流光浅界' },
+  { value: 'rgb(210, 224, 255)', label: '流光夜阑' },
+  { value: 'rgb(157, 211, 183)', label: '绿意盎然' },
+  { value: 'rgb(143, 198, 235)', label: '蓝田生玉' },
+  { value: 'rgb(157, 187, 211)', label: '蛋雅深蓝' },
+  { value: 'rgb(250, 209, 144)', label: '橙黄橘绿' },
+  { value: 'rgb(232, 153, 151)', label: '热情似火' },
+  { value: 'rgb(247, 186, 192)', label: '粉装玉琢' },
+  { value: 'rgb(200, 164, 215)', label: '重斤球紫' },
+  { value: 'rgb(174, 182, 190)', label: '灰常美丽' },
 ]
 
 export default {
@@ -90,6 +101,19 @@ export default {
         { value: 'cover', label: window.i18n.t('setting__play_detail_ui_accent_cover') },
         ...ACCENT_SWATCHES,
       ],
+      // Luminous Harmonic: 自定义调色盘 — uiAccent 为具体颜色且不在预设中时视为自定义
+      isCustomAccent: computed(() => {
+        const v = appSetting['playDetail.uiAccent'] || 'cover'
+        return v !== 'cover' && !ACCENT_SWATCHES.some(c => c.value == v)
+      }),
+      // Luminous Harmonic: 调色盘 → hex 转 rgb 存储 (对比度在详情页 writeAccentToRoot 统一调整)
+      handleCustomAccent: (e) => {
+        const hex = e.target.value
+        const r = parseInt(hex.slice(1, 3), 16)
+        const g = parseInt(hex.slice(3, 5), 16)
+        const b = parseInt(hex.slice(5, 7), 16)
+        updateSetting({ 'playDetail.uiAccent': `rgb(${r}, ${g}, ${b})` })
+      },
     }
   },
 }
@@ -145,5 +169,30 @@ export default {
   font-weight: 700;
   color: #fff;
   background: conic-gradient(from 210deg, #f5ab35, #d64541, #9b59b6, #3498db, #4daf7c, #f5ab35);
+}
+
+.accentSwatch.customSwatch {
+  overflow: hidden;
+}
+.colorInput {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+.customCheck {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid var(--color-content-background);
+  pointer-events: none;
 }
 </style>
