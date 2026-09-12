@@ -61,8 +61,8 @@ const options = {
   publish: [
     {
       provider: 'github',
-      owner: 'lyswhut',
-      repo: 'lx-music-desktop',
+      owner: 'caocam666-del',
+      repo: 'lx-music-enhanced',
     },
   ],
 }

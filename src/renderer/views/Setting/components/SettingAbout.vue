@@ -2,22 +2,33 @@
 dt#about {{ $t('setting__about') }}
 dd
   .p.small
-    | 本软件完全免费，代码已开源。开源地址：
-    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/lyswhut/lx-music-desktop#readme')") https://github.com/lyswhut/lx-music-desktop
+    strong 本版本为 Luminous Harmonic 增强版
+    | ，基于&nbsp;
+    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/lyswhut/lx-music-desktop#readme')") lx-music-desktop
+    | &nbsp;深度定制。
+  .p.small
+    | 本增强版开源地址：
+    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/caocam666-del/lx-music-enhanced#readme')") https://github.com/caocam666-del/lx-music-enhanced
   .p.small
     | 最新版下载地址：
-    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/lyswhut/lx-music-desktop/releases')") GitHub Releases
+    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/caocam666-del/lx-music-enhanced/releases')") GitHub Releases
+  br
+  .p.small
+    strong 原作者：&nbsp;
+    strong 落雪无痕 (lyswhut)
+    | &nbsp;— 感谢原作者的卓越贡献，原项目地址：
+    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/lyswhut/lx-music-desktop#readme')") https://github.com/lyswhut/lx-music-desktop
+  .p.small
+    strong 增强版维护：&nbsp;
+    strong Cam (caocam666-del)
+  br
   .p.small
     | 软件的常见问题可转至：
     span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://lyswhut.github.io/lx-music-doc/desktop/faq')") 桌面版常见问题
+    | （来自原项目文档，大部分问题依然适用）。
   .p.small
-    strong 本软件没有客服
-    | ，但我们整理了一些常见的使用问题。
-    strong 仔细、仔细、仔细
-    | 地阅读常见问题后，
-  .p.small
-    | 仍有问题可到&nbsp;GitHub&nbsp;
-    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/lyswhut/lx-music-desktop/issues?q=is%3Aissue+')") 提交&nbsp;Issue
+    | 增强版相关问题可到&nbsp;GitHub&nbsp;
+    span.hover.underline(:aria-label="$t('setting__click_open')" @click="openUrl('https://github.com/caocam666-del/lx-music-enhanced/issues')") 提交&nbsp;Issue
     | 。
   br
   .p.small 由于软件开发的初衷仅是为了对新技术的学习与研究，因此软件直至停止维护都将会一直保持纯净。
@@ -38,7 +49,9 @@ dd
 
   .p.small
     | By:&nbsp;
-    strong 落雪无痕
+    strong 落雪无痕 (lyswhut)
+    | &nbsp;·&nbsp;增强版 By:&nbsp;
+    strong Cam
 </template>
 
 <script>

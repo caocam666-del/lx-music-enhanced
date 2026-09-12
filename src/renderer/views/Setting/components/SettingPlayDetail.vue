@@ -77,6 +77,7 @@ const ACCENT_SWATCHES = [
   { value: 'rgb(247, 186, 192)', label: '粉装玉琢' },
   { value: 'rgb(200, 164, 215)', label: '重斤球紫' },
   { value: 'rgb(174, 182, 190)', label: '灰常美丽' },
+  { value: 'rgb(5, 5, 8)', label: '乌漆麻黑' },
 ]
 
 export default {

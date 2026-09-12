@@ -1,20 +1,13 @@
 import { httpGet } from './request'
-import pkg from '../../../package.json'
 
 // TODO add Notice
 
-const author = pkg.author.name
-const name = pkg.name
-
 const address = [
-  [`https://raw.githubusercontent.com/${author}/${name}/master/publish/version.json`, 'direct'],
-  ['https://registry.npmjs.org/lx-music-desktop-version-info/latest', 'npm'],
-  [`https://cdn.jsdelivr.net/gh/${author}/${name}/publish/version.json`, 'direct'],
-  [`https://fastly.jsdelivr.net/gh/${author}/${name}/publish/version.json`, 'direct'],
-  [`https://gcore.jsdelivr.net/gh/${author}/${name}/publish/version.json`, 'direct'],
-  ['https://registry.npmmirror.com/lx-music-desktop-version-info/latest', 'npm'],
-  ['https://gitee.com/lyswhut/lx-music-desktop-versions/raw/master/version.json', 'direct'],
-  ['http://cdn.stsky.cn/lx-music/desktop/version.json', 'direct'],
+  // Luminous Harmonic: 自动更新绑定到本 fork 仓库 (分支 main)
+  ['https://raw.githubusercontent.com/caocam666-del/lx-music-enhanced/main/publish/version.json', 'direct'],
+  ['https://cdn.jsdelivr.net/gh/caocam666-del/lx-music-enhanced@main/publish/version.json', 'direct'],
+  ['https://fastly.jsdelivr.net/gh/caocam666-del/lx-music-enhanced@main/publish/version.json', 'direct'],
+  ['https://gcore.jsdelivr.net/gh/caocam666-del/lx-music-enhanced@main/publish/version.json', 'direct'],
 ]
 
 const request = async(url, retryNum = 0) => {

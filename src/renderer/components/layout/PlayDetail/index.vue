@@ -208,10 +208,14 @@ export default {
       }
       // 亮度归入可读区间: 保持色相/饱和, L → clamp(bgL + 0.28, 0.66, 0.90);
       // 低饱和 (灰白系) 颜色同时补一点饱和 (×1.15) 避免和灰色背景融在一起
-      const readableAccent = (rgb) => {
+      const readableAccent = (rgb, allowDarken = false) => {
         const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2])
-        const targetL = Math.min(0.9, Math.max(0.66, bgL + 0.28))
-        const s2 = Math.min(1, Math.max(s, 0.18) * 1.15)
+        // 封面取色永远向亮调整; 用户主动选择的颜色按"改动最小"的方向调整
+        // (亮色微提亮 / 暗色微压暗), 乌漆麻黑这类深色在亮背景下可保持深色
+        const targetL = allowDarken
+          ? (l >= bgL ? Math.min(0.9, Math.max(0.66, bgL + 0.28)) : Math.max(0.1, Math.min(0.64, bgL - 0.28)))
+          : Math.min(0.9, Math.max(0.66, bgL + 0.28))
+        const s2 = targetL >= l ? Math.min(1, Math.max(s, 0.18) * 1.15) : Math.max(0, s * 0.9)
         return hslToRgb(h, s2, targetL)
       }
 
@@ -228,7 +232,8 @@ export default {
       if (uiAccent === 'cover' && appSetting['playDetail.backgroundMode'] == 'theme') {
         document.documentElement.style.setProperty('--detail-accent-bright', 'color-mix(in srgb, var(--color-primary) 82%, white)')
       } else {
-        const finalRgb = readableAccent(uiBase)
+        // 用户主动选择的颜色允许向暗方向调整 (乌漆麻黑等深色选项)
+        const finalRgb = readableAccent(uiBase, uiAccent !== 'cover')
         document.documentElement.style.setProperty('--detail-accent-bright', `rgb(${finalRgb.join(',')})`)
       }
       // 中性高对比文字色：文字固定近白; 阴影从旧版重阴影 (3px + 12px 光晕) 减为
