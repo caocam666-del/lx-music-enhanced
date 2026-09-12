@@ -360,6 +360,10 @@ declare global {
        * 播放详情页-流光背景动效 (dynamic / rhythm)
        */
       'playDetail.flowMode': 'dynamic' | 'rhythm'
+      /**
+       * 播放详情页-功能组件颜色 (cover 封面取色 / rgb 字符串主题色)
+       */
+      'playDetail.uiAccent': string
 
 
       /**

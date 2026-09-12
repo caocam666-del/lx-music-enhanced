@@ -167,14 +167,55 @@ export default {
       }
       const accent = `rgb(${coverAccent.value})`
       document.documentElement.style.setProperty('--detail-accent-color', accent)
-      // Luminous Harmonic: UI 强调色 = 主题色 (Pure-music 方案) — Pure-music 的进度条/按钮/当前行歌词
-      // 全部用 Material3 scheme.primary (主题种子色, 色调映射保证可读), 封面色只负责背景氛围.
-      // 封面原始色当强调色在灰白/深色封面上必然发虚 (用户反馈), 主题色则任何背景下都清晰.
-      document.documentElement.style.setProperty('--detail-accent-bright', 'var(--color-primary)')
       // 强调色上的文字对比色（Pure-music: luminance > 0.179 用黑, 否则白）
       const parts = String(coverAccent.value).split(',').map(n => Number(n) || 0)
       const luminance = (parts[0] * 299 + parts[1] * 587 + parts[2] * 114) / 1000
       document.documentElement.style.setProperty('--detail-on-accent', luminance > 140 ? '#111318' : '#ffffff')
+
+      // Luminous Harmonic: 「功能组件颜色」解析 — 歌词高亮/进度条/按钮的强调色来源:
+      //   'cover'  → 封面取色 (封面主色按亮度混白提亮, 原有行为)
+      //   'rgb(..)' → 用户在设置页选的主题色板颜色
+      // 无论来源, 都做对比度保证: 与背景流光亮度差 ≥ 0.28 (不足时向白/黑方向调整),
+      // 这就是 Pure-music "UI 始终清晰" 的本质 — 强调色永远与背景拉开亮度差.
+      const bgL = Math.min(0.85, (luminance / 255) * 0.72) // 流光经 brightness .88 + 蒙层后的背景亮度估计
+      const lum255 = (rgb) => (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000 / 255
+      const mixToward = (rgb, target, t) => rgb.map((c, i2) => Math.round(c + (target[i2] - c) * t))
+      const ensureContrast = (rgb) => {
+        let L = lum255(rgb)
+        const WHITE = [255, 255, 255]
+        const BLACK = [17, 19, 24]
+        if (Math.abs(L - bgL) >= 0.28) return { rgb, L }
+        // 亮度与背景过近: 亮背景 → 向黑压, 暗背景 → 向白提
+        const target = L >= bgL ? BLACK : WHITE
+        const dir = L >= bgL ? -1 : 1
+        let t = 0.15
+        while (t <= 1) {
+          const mixed = mixToward(rgb, target, t)
+          const mL = lum255(mixed)
+          if (Math.abs(mL - bgL) >= 0.28 || (dir < 0 && mL <= 0.14) || (dir > 0 && mL >= 0.96)) {
+            return { rgb: mixed, L: mL }
+          }
+          t += 0.1
+        }
+        return { rgb: mixToward(rgb, target, 1), L: lum255(mixToward(rgb, target, 1)) }
+      }
+
+      const uiAccent = appSetting['playDetail.uiAccent'] || 'cover'
+      let uiBase // 强调色基色 (rgb 数组)
+      if (uiAccent !== 'cover') {
+        const m = String(uiAccent).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+        uiBase = m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null
+      } else {
+        uiBase = parts
+      }
+      if (!uiBase) uiBase = parts
+      // 主题配色模式下用户未自定义时维持原有行为: 主题色轻混白
+      if (uiAccent === 'cover' && appSetting['playDetail.backgroundMode'] == 'theme') {
+        document.documentElement.style.setProperty('--detail-accent-bright', 'color-mix(in srgb, var(--color-primary) 82%, white)')
+      } else {
+        const { rgb: finalRgb } = ensureContrast(uiBase)
+        document.documentElement.style.setProperty('--detail-accent-bright', `rgb(${finalRgb.join(',')})`)
+      }
       // 中性高对比文字色：文字固定近白; 阴影从旧版重阴影 (3px + 12px 光晕) 减为
       // Pure-music 式轻贴边影 — 背景已是柔和色场, 重阴影只会显脏
       document.documentElement.style.setProperty('--detail-font-bright', '#f4f5f7')
@@ -186,7 +227,7 @@ export default {
       // style), 不再按封面亮度分档加深 (会发闷), 固定轻蒙层即可保证文字/UI 清晰
       document.documentElement.style.setProperty('--detail-scrim-opacity', '0.14')
     }
-    watch([() => appSetting['playDetail.backgroundMode'], coverAccent, isShowPlayerDetail], writeAccentToRoot, { immediate: true })
+    watch([() => appSetting['playDetail.backgroundMode'], coverAccent, isShowPlayerDetail, () => appSetting['playDetail.uiAccent']], writeAccentToRoot, { immediate: true })
     watch([coverPalette, isShowPlayerDetail, () => appSetting['playDetail.backgroundMode']], writePaletteVars)
     onBeforeUnmount(() => {
       document.documentElement.style.removeProperty('--detail-accent-color')
@@ -518,16 +559,16 @@ export default {
   }
 }
 @keyframes flow-rotate-1 {
-  from { transform: rotate(0deg) scale(var(--flow-breath, 1)); }
-  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 @keyframes flow-rotate-2 {
-  from { transform: rotate(0deg) scale(var(--flow-breath, 1)); }
-  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 @keyframes flow-rotate-3 {
-  from { transform: rotate(0deg) scale(var(--flow-breath, 1)); }
-  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 // 色斑位置的正弦微漂移 (Pure-music driftAmp 0.052 的收敛近似)
 @keyframes flow-drift-primary {
@@ -719,7 +760,7 @@ export default {
 }
 
 @keyframes detail-artwork-spin {
-  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 760px) {

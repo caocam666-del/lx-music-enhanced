@@ -89,6 +89,8 @@ const defaultSetting: LX.AppSetting = {
   'playDetail.backgroundMode': 'cover',
   // Luminous Harmonic: 流光背景动效 — dynamic 动态流光 / rhythm 节奏律动 (音频响应呼吸)
   'playDetail.flowMode': 'dynamic',
+  // Luminous Harmonic: 功能组件颜色 — cover 封面取色 / rgb(r,g,b) 主题色板选择
+  'playDetail.uiAccent': 'cover',
 
   'desktopLyric.enable': false,
   'desktopLyric.isLock': false,
