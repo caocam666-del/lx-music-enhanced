@@ -87,6 +87,8 @@ const defaultSetting: LX.AppSetting = {
   // Luminous Harmonic: 黑胶中心圆点 (部分封面中心有主体, 可关掉避免遮挡)
   'playDetail.isShowArtworkCenter': true,
   'playDetail.backgroundMode': 'cover',
+  // Luminous Harmonic: 流光背景动效 — dynamic 动态流光 / rhythm 节奏律动 (音频响应呼吸)
+  'playDetail.flowMode': 'dynamic',
 
   'desktopLyric.enable': false,
   'desktopLyric.isLock': false,

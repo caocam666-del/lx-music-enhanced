@@ -105,8 +105,9 @@ export default {
 
     // Luminous Harmonic: 对齐 Pure-music 歌词渲染 (lyrics_line_painter) —
     // 只有当前行取色; 已播放行 = 纯白 1.0 (playedColor = neutralBase α1.0),
-    // 未播放行 = 纯白低透明度 (unplayedColor α0.40). 距离模糊受「歌词模糊化」
-    // (playDetail.isLyricBlur) 控制: 开启 → 未播放行模糊上限 1.5px; 关闭 → 全部清晰
+    // 未播放行 = 纯白低透明度 (unplayedColor α0.40). 「歌词模糊化」开启时
+    // 已播放/未播放行都随距当前行的距离模糊 (blurSigma 0.5/行, 上限 1.5px);
+    // 关闭时全部行完全清晰
     const applyLyricDepth = (line) => {
       const container = dom_lyric.value
       if (!container) return
@@ -117,8 +118,7 @@ export default {
         const abs = Math.abs(dist)
         const opacity = abs === 0 ? 1 : (dist < 0 ? 1 : (allowBlur ? 0.55 : 0.85))
         const scale = abs === 0 ? (isZoomActiveLrc.value ? 1.16 : 1) : 0.90
-        // 模糊只作用于「未播放」行且仅在模糊化开启时; 已播放行永远清晰纯白
-        const blur = (allowBlur && dist > 0) ? Math.min(1.5, dist * 0.5) : 0
+        const blur = (allowBlur && abs > 0) ? Math.min(1.5, abs * 0.5) : 0
         if (dist === 0) el.style.transitionDelay = '0ms'
         el.style.opacity = opacity
         el.style.transform = `scale(${scale})`

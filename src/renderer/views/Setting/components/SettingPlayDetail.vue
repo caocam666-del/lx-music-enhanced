@@ -15,6 +15,11 @@ dd
     h3#play_detail_background {{ $t('setting__play_detail_background') }}
     base-checkbox.gap-left(id="setting_play_detail_background_cover" name="setting_play_detail_background" :model-value="appSetting['playDetail.backgroundMode']" need value="cover" :label="$t('setting__play_detail_background_cover')" @update:model-value="setBackgroundMode")
     base-checkbox.gap-left(id="setting_play_detail_background_theme" name="setting_play_detail_background" :model-value="appSetting['playDetail.backgroundMode']" need value="theme" :label="$t('setting__play_detail_background_theme')" @update:model-value="setBackgroundMode")
+  // Luminous Harmonic: 流光背景动效 — 动态流光 (缓慢漂移) / 节奏律动 (跟随音乐节奏呼吸, Pure-music AudioReactiveFlow)
+  .gap-top
+    h3#play_detail_flow {{ $t('setting__play_detail_flow') }}
+    base-checkbox.gap-left(id="setting_play_detail_flow_dynamic" name="setting_play_detail_flow" :model-value="appSetting['playDetail.flowMode']" need value="dynamic" :label="$t('setting__play_detail_flow_dynamic')" @update:model-value="updateSetting({'playDetail.flowMode': $event})")
+    base-checkbox.gap-left(id="setting_play_detail_flow_rhythm" name="setting_play_detail_flow" :model-value="appSetting['playDetail.flowMode']" need value="rhythm" :label="$t('setting__play_detail_flow_rhythm')" @update:model-value="updateSetting({'playDetail.flowMode': $event})")
 
 dd
   h3#play_detail_align {{ $t('setting__play_detail_align') }}

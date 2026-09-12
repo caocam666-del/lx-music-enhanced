@@ -356,6 +356,10 @@ declare global {
        * 播放详情页背景配色来源
        */
       'playDetail.backgroundMode': 'cover' | 'theme'
+      /**
+       * 播放详情页-流光背景动效 (dynamic / rhythm)
+       */
+      'playDetail.flowMode': 'dynamic' | 'rhythm'
 
 
       /**

@@ -85,6 +85,7 @@ import ControlBtnsRightHeader from './ControlBtnsRightHeader.vue'
 import { registerAutoHideMounse, unregisterAutoHideMounse } from './autoHideMounse'
 import { appSetting } from '@renderer/store/setting'
 import { getCoverPalette } from '@renderer/utils/coverPalette'
+import useFlowRhythm from './useFlowRhythm'
 
 export default {
   name: 'CorePlayDetail',
@@ -98,6 +99,8 @@ export default {
   },
   setup() {
     const visibled = ref(false)
+    // Luminous Harmonic: 「节奏律动」— 封面取色模式下启用音频响应呼吸 (Pure-music AudioReactiveFlow)
+    useFlowRhythm(computed(() => appSetting['playDetail.flowMode'] == 'rhythm' && appSetting['playDetail.backgroundMode'] != 'theme'))
     // Luminous Harmonic: 详情页进出过渡类名 — 360ms 入场(上滑+淡入, entrance 曲线) / 220ms 出场
     const detailEnterActive = 'detail-slide-enter-active'
     const detailEnterFrom = 'detail-slide-enter-from'
@@ -513,16 +516,16 @@ export default {
   }
 }
 @keyframes flow-rotate-1 {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg) scale(var(--flow-breath, 1)); }
+  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
 }
 @keyframes flow-rotate-2 {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg) scale(var(--flow-breath, 1)); }
+  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
 }
 @keyframes flow-rotate-3 {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg) scale(var(--flow-breath, 1)); }
+  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
 }
 // 色斑位置的正弦微漂移 (Pure-music driftAmp 0.052 的收敛近似)
 @keyframes flow-drift-primary {
@@ -714,7 +717,7 @@ export default {
 }
 
 @keyframes detail-artwork-spin {
-  to { transform: rotate(360deg); }
+  to { transform: rotate(360deg) scale(var(--flow-breath, 1)); }
 }
 
 @media (max-width: 760px) {
