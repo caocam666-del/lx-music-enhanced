@@ -483,13 +483,13 @@ export default {
   // (对齐 Pure-music 的 viewport×1.30 crop), 旋转绕斑心, 对角半径 113vmin 恰好盖住蒙版衰减区
   left: 50%;
   top: 50%;
-  width: 160vmin;
-  height: 160vmin;
-  margin: -80vmin 0 0 -80vmin;
+  width: 260vmin;
+  height: 260vmin;
+  margin: -130vmin 0 0 -130vmin;
   background-image: var(--detail-cover-image);
-  background-size: cover;
+  background-size: 320vmin 320vmin;
   background-position: center;
-  // Pure-music 暗色风格: saturate 1.18 + brightness 0.8 (黑抬升由基底近似);
+  // Pure-music 暗色风格: saturate 1.25 + brightness 0.88 (黑抬升由基底近似);
   // blur 一次栅格化, 旋转只动 transform, 模糊零重复开销
   filter: blur(48px) saturate(1.25) brightness(.88);
   will-change: transform;
@@ -498,11 +498,11 @@ export default {
 // Luminous Harmonic: 色彩分离的关键 — 三个斑采样封面的不同区域
 // (Pure-music 靠每层的 texture offset 0.41/-0.42 实现同效), 否则全部糊成一种颜色
 .flowSecondary .flowTex {
-  background-position: 76% 64%;
+  background-position: 24% 62%;
   animation: flow-rotate-2 40s linear infinite reverse;
 }
 .flowLight .flowTex {
-  background-position: 24% 70%;
+  background-position: 76% 70%;
   animation: flow-rotate-3 30s linear infinite reverse;
 }
 // 暂停时整个流光场静止 (对齐 Pure-music: 非播放态 flow speed = 0)

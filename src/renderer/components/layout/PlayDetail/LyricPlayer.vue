@@ -103,21 +103,19 @@ export default {
       handleLyricTransitionEnter,
     } = useLyric({ isPlay, lyric, playProgress, isShowLyricProgressSetting })
 
-    // Luminous Harmonic: 复刻 Pure-music 歌词距离衰减 —
-    // 当前行靠颜色/字重突出 (默认不放大, 对齐 Pure-music; 开"当前行放大"设置才 1.16)，
-    // 未播放行随距当前行的行数渐隐/缩小/轻微模糊，层次分明
-    // Pure-music 语义: 当前行模糊度恒为 0 且即时生效 — 当前行的 transitionDelay 显式清零,
-    // 不受错峰残留影响 (否则快速换行时活动行会长时间处于模糊态)
+    // Luminous Harmonic: 对齐 Pure-music 歌词渲染 (lyrics_line_painter) —
+    // 只有当前行取色突出 (mainColor = primary), 其余所有行 (已播/未播) 统一
+    // neutralBase (白) 低透明度 0.40 + 随距离递增的轻微模糊 (blurSigmaStep 0.6,
+    // blurSigmaMax 2.5), 无阴影无光晕 — 这就是 Pure-music 歌词"干净"的来源
     const applyLyricDepth = (line) => {
       const container = dom_lyric.value
       if (!container) return
       const els = container.querySelectorAll('.line-content')
       els.forEach((el, i) => {
         const dist = Math.abs(i - line)
-        // Luminous Harmonic: 距离衰减 — 最低透明度 0.48 (原 0.34 在暗色背景上远处行会糊成一片看不清)
-        const opacity = dist === 0 ? 1 : Math.max(0.48, Math.min(0.85, Math.pow(0.9, dist)))
-        const scale = dist === 0 ? (isZoomActiveLrc.value ? 1.16 : 1) : 0.92
-        const blur = dist <= 1 ? 0 : Math.min(1.5, (dist - 1) * 0.6)
+        const opacity = dist === 0 ? 1 : 0.42
+        const scale = dist === 0 ? (isZoomActiveLrc.value ? 1.16 : 1) : 0.90
+        const blur = dist === 0 ? 0 : Math.min(2.5, dist * 0.6)
         if (dist === 0) el.style.transitionDelay = '0ms'
         el.style.opacity = opacity
         el.style.transform = `scale(${scale})`
@@ -339,20 +337,18 @@ export default {
       line-height: 1.3;
       padding: calc(var(--playDetail-lrc-font-size, 16px) * .52) 10px;
       overflow-wrap: break-word;
-      // Luminous Harmonic: 封面取色模式近白、主题模式回退主题文字色
+      // Luminous Harmonic: Pure-music 规则 — 非当前行 = 纯白 0.40, 无阴影无光晕
+      // (颜色的"干净"来自: 只给当前行上色, 其余行统一低透明度白 + 轻微距离模糊)
       color: var(--detail-font-bright, var(--color-font));
-      // Luminous Harmonic: 参考 Pure-music — 未播放行提高不透明度，清晰可读（背景已由蒙层压暗）
-      opacity: .78;
-      transform: scale(.92);
+      opacity: .42;
+      transform: scale(.90);
       transform-origin: center;
       // Luminous Harmonic: 距离衰减（opacity/scale/filter 平滑过渡）
       transition: opacity @transition-normal, transform @transition-normal, color @transition-normal, padding @transition-normal, filter @transition-normal;
-      // Luminous Harmonic: 歌词专用轻阴影 (--detail-lyric-shadow, 仅 1px 贴边暗线) —
-      // 完整 --detail-font-shadow 含 12px 环境光晕, 挂到全部歌词行会在暗背景上显脏
-      text-shadow: var(--detail-lyric-shadow, none);
+      text-shadow: none;
       will-change: transform, opacity;
 
-      &:hover { opacity: .95; }
+      &:hover { opacity: .8; }
 
       .extended {
         font-size: 0.8em;
@@ -375,9 +371,9 @@ export default {
         // Luminous Harmonic: 去掉 padding 跳动 (原 .52→.68 的上下变化会让整屏行高抖动)
         padding-top: calc(var(--playDetail-lrc-font-size, 16px) * .52);
         padding-bottom: calc(var(--playDetail-lrc-font-size, 16px) * .52);
-        // Luminous Harmonic: 当前行单层 accent 光晕 (较旧版减淡, 避免发糊)
-        text-shadow:
-          0 0 10px color-mix(in srgb, var(--detail-accent-bright, var(--detail-accent-color)) 30%, transparent);
+        // Luminous Harmonic: Pure-music 当前行无光晕无阴影 (enableGlow 默认 false) —
+        // 取色靠颜色本身, 发光只会让字发糊
+        text-shadow: none;
       }
       &.line-mode.active .font-lrc, &.font-mode.played .font-lrc, &.font-mode.active .font-lrc {
         // Luminous Harmonic: 当前行用亮化版 accent（低亮度封面主色直接做文字色会发虚）
