@@ -37,6 +37,15 @@ export const applyWallpaper = dataUrl => {
   }
   hideBackdrop()
   if (dataUrl) {
+    // Luminous Harmonic: 自定义壁纸与 WE 壁纸互斥 — 设置自定义壁纸时停掉 WE 视频层并清除
+    // WE 记录, 否则启动恢复时二者写同一背景层互相覆盖 (表现为"重启后壁纸丢失")
+    const video = document.getElementById('lx-wallpaper-video')
+    if (video) {
+      video.pause()
+      video.removeAttribute('src')
+      video.style.display = 'none'
+    }
+    window.localStorage.removeItem('lx-we-current')
     applyLuminance(dataUrl)
   } else {
     document.documentElement.style.removeProperty('--lx-wallpaper-opacity')
@@ -93,6 +102,9 @@ export const applyWallpaperEngine = (item) => {
     mediaUrl: item.mediaUrl ?? '',
     previewUrl: item.previewUrl ?? '',
   }))
+  // Luminous Harmonic: 与自定义壁纸互斥 — 选中 WE 壁纸时清掉自定义壁纸,
+  // 否则启动恢复时自定义壁纸会覆盖 WE 壁纸 (表现同上)
+  window.localStorage.removeItem('lx-wallpaper')
   document.documentElement.style.setProperty('--lx-wallpaper-opacity', '1')
   const hideVideo = () => {
     if (!video) return

@@ -8,8 +8,8 @@ import { app, protocol } from 'electron'
 import { mainHandle } from '@common/mainIpc'
 import { WIN_MAIN_RENDERER_EVENT_NAME } from '@common/ipcNames'
 import {
-  previewPathForId,
-  mediaPathForId,
+  resolvePreviewPath,
+  resolveMediaPath,
   scanWallpaperEngineLibrary,
 } from './wallpaper-engine-library'
 
@@ -35,11 +35,18 @@ const streamFile = async(filePath: string, request: Request): Promise<Response> 
       const ext = path.extname(filePath).toLowerCase()
       const mime = MIME_BY_EXT[ext] ?? 'application/octet-stream'
       const range = request.headers.get('range')
+      // Luminous Harmonic: 请求中断(退出/切页/seek)时必须销毁底层文件流 —
+      // 否则 Electron protocol.handle 的已知问题会泄漏 fd/流, 退出时可能挂住,
+      // 残留僵尸进程持有单实例锁 → 下次启动"无法打开"
+      const wireAbort = (stream: import('node:fs').ReadStream) => {
+        request.signal.addEventListener('abort', () => { stream.destroy() }, { once: true })
+      }
       if (range) {
         const match = range.match(/bytes=(\d+)-(\d*)/)
         const start = match ? Number(match[1]) : 0
         const end = match?.[2] ? Number(match[2]) : stat.size - 1
         const stream = createReadStream(filePath, { start, end })
+        wireAbort(stream)
         stream.on('error', () => { try { resolve(new Response('read error', { status: 500 })) } catch (_) {} })
         resolve(new Response(stream as unknown as ReadableStream, {
           status: 206,
@@ -52,6 +59,7 @@ const streamFile = async(filePath: string, request: Request): Promise<Response> 
         }))
       } else {
         const stream = createReadStream(filePath)
+        wireAbort(stream)
         stream.on('error', () => { try { resolve(new Response('read error', { status: 500 })) } catch (_) {} })
         resolve(new Response(stream as unknown as ReadableStream, {
           status: 200,
@@ -67,9 +75,11 @@ const streamFile = async(filePath: string, request: Request): Promise<Response> 
 const handleLxWeRequest = async(request: Request): Promise<Response> => {
   const u = new URL(request.url)
   // lx-we://media/<id> | lx-we://preview/<id>
+  // 注意: 必须走 resolve* (惰性扫描) 而不是同步 mediaPathForId —
+  // 启动恢复壁纸时扫描缓存还是空的, 同步版会直接 404 导致壁纸永远恢复不了
   const kind = u.hostname
   const id = u.pathname.replace(/^\/+/, '')
-  const filePath = kind == 'media' ? mediaPathForId(id) : previewPathForId(id)
+  const filePath = await (kind == 'media' ? resolveMediaPath(id) : resolvePreviewPath(id))
   if (!filePath || !existsSync(filePath)) return new Response('not found', { status: 404 })
   return streamFile(filePath, request)
 }
@@ -112,10 +122,10 @@ export default () => {
     try {
       protocol.handle('lx-we', async(request) => {
         const u = new URL(request.url)
-        // lx-we://media/<id> | lx-we://preview/<id>
+        // lx-we://media/<id> | lx-we://preview/<id> — 走惰性扫描版解析 (见 handleLxWeRequest 注释)
         const kind = u.hostname
         const id = u.pathname.replace(/^\//, '')
-        const filePath = kind == 'media' ? mediaPathForId(id) : previewPathForId(id)
+        const filePath = await (kind == 'media' ? resolveMediaPath(id) : resolvePreviewPath(id))
         if (!filePath || !existsSync(filePath)) return new Response('not found', { status: 404 })
         return streamFile(filePath, request)
       })

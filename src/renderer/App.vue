@@ -62,6 +62,7 @@ import { useRouter } from '@common/utils/vueRouter'
 import useApp from '@renderer/core/useApp'
 import { appSetting } from '@renderer/store/setting'
 import { applyWallpaper, restoreWallpaperEngine } from '@renderer/utils/wallpaper'
+import { applyVisualPreferences } from '@renderer/utils/visualPreferences'
 import { isShowPlayerDetail } from '@renderer/store/player/state'
 import { setShowPlayerDetail } from '@renderer/store/player/action'
 import { restartApp } from '@renderer/utils/ipc'
@@ -72,15 +73,9 @@ onMounted(() => {
 
 useApp()
 
-// Restore visual preferences before the first route is rendered.
-const readVisualPreference = (key, fallback, min, max) => {
-  const value = Number(localStorage.getItem(key))
-  if (!Number.isFinite(value)) return fallback
-  return Math.min(max, Math.max(min, value))
-}
-const visualStyle = document.documentElement.style
-visualStyle.setProperty('--glass-alpha', readVisualPreference('lx-glassAlpha', 80, 30, 100) / 100)
-visualStyle.setProperty('--lx-bg-alpha', readVisualPreference('lx-bgAlpha', 100, 40, 100) / 100)
+// Luminous Harmonic: 首屏渲染前恢复全部视觉偏好 (圆角/卡片透明度/背景透明度/背景强度/模糊) —
+// 与外观与主题页的 applyUI 共用同一实现, 修复"启动半透明、必须进外观与主题页才恢复"
+applyVisualPreferences()
 
 const router = useRouter()
 
@@ -121,9 +116,10 @@ onMounted(() => {
   document.getElementById('root').style.display = 'block'
   window.addEventListener('keydown', handleGoHomeKey, true)
   window.addEventListener('scroll', handleScrollVisibility, true)
-  // Luminous Harmonic: 启动时恢复自定义壁纸 (含亮度自适应透明度)
+  // Luminous Harmonic: 启动时恢复壁纸 — WE 壁纸优先 (restoreWallpaperEngine 见上方 onMounted);
+  // 二者写同一背景层, 仅当没有 WE 壁纸时才恢复自定义壁纸 (兼容互斥改造前的存量数据)
   const savedWallpaper = localStorage.getItem('lx-wallpaper')
-  if (savedWallpaper) applyWallpaper(savedWallpaper)
+  if (savedWallpaper && !localStorage.getItem('lx-we-current')) applyWallpaper(savedWallpaper)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGoHomeKey, true)

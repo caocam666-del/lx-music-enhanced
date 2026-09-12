@@ -143,6 +143,7 @@ import WallpaperEngineModal from './WallpaperEngineModal.vue'
 import { appSetting, updateSetting } from '@renderer/store/setting'
 // Luminous Harmonic: applyWallpaperEngine 必须导入 — 之前清除按钮调用未导入的函数直接抛错 (点击无效)
 import { applyWallpaper, applyWallpaperEngine } from '@renderer/utils/wallpaper'
+import { applyVisualPreferences } from '@renderer/utils/visualPreferences'
 import { getThemes, applyTheme, findTheme, buildBgUrl } from '@renderer/store/utils'
 
 export default {
@@ -324,23 +325,14 @@ export default {
     const lxWallpaperStrength = ref(Number(localStorage.getItem('lx-wallpaper-strength')) || 40)
     const lxWallpaperBlur = ref(Number(localStorage.getItem('lx-wallpaper-blur')) || 0)
     const applyUI = () => {
-      const r = uiRadius.value
-      document.documentElement.style.setProperty('--lx-radius', r + 'px')
-      document.documentElement.style.setProperty('--lx-radius-sm', Math.round(r * 0.67) + 'px')
-      document.documentElement.style.setProperty('--lx-radius-lg', Math.round(r * 1.33) + 'px')
-      const setRadius = (id) => { const el = document.getElementById(id); if (el) el.style.borderRadius = r + 'px' }
-      setRadius('body')
-      setRadius('root')
-      document.documentElement.style.setProperty('--glass-alpha', glassAlpha.value / 100)
-      document.documentElement.style.setProperty('--lx-bg-alpha', bgAlpha.value / 100)
-      document.documentElement.style.setProperty('--lx-wallpaper-strength', String(lxWallpaperStrength.value))
-      document.documentElement.style.setProperty('--lx-wallpaper-blur', lxWallpaperBlur.value + 'px')
-      // 持久化到 localStorage (切页面后不丢失)
-      localStorage.setItem('lx-uiRadius', r)
+      // Luminous Harmonic: 持久化到 localStorage (切页面后不丢失)
+      localStorage.setItem('lx-uiRadius', uiRadius.value)
       localStorage.setItem('lx-glassAlpha', glassAlpha.value)
       localStorage.setItem('lx-bgAlpha', bgAlpha.value)
       localStorage.setItem('lx-wallpaper-strength', lxWallpaperStrength.value)
       localStorage.setItem('lx-wallpaper-blur', lxWallpaperBlur.value)
+      // 实际应用统一走共享实现 (与 App.vue 启动恢复一致)
+      applyVisualPreferences()
     }
     watch(uiRadius, applyUI)
     watch(glassAlpha, applyUI)

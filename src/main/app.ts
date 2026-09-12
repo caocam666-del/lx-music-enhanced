@@ -263,6 +263,10 @@ export const listenerAppEvent = (startApp: () => void) => {
 
   app.on('before-quit', () => {
     global.lx.isSkipTrayQuit = true
+    // Luminous Harmonic: 退出保险 — 若有泄漏句柄 (如 lx-we:// 壁纸视频流) 阻塞正常退出,
+    // 残留的僵尸进程会持有单实例锁, 表现为"关闭软件后再也打不开"。5s 后强制退出兜底。
+    const forceExit = setTimeout(() => app.exit(0), 5000)
+    forceExit.unref?.()
   })
   app.on('window-all-closed', () => {
     if (isMac) return

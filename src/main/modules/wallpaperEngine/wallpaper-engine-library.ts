@@ -201,6 +201,24 @@ export const previewPathForId = (id: string): string | null => {
   return item ? (item.previewPath || null) : null
 }
 
+// Luminous Harmonic: 启动恢复壁纸的关键 — 协议路径解析不能依赖"打开过 WE 弹窗"留下的扫描缓存。
+// ensureScan 提供惰性去重扫描: 启动后第一次 lx-we:// 请求会自动触发一次扫描再解析路径,
+// 否则重启后 scanCache 为空 → 协议 404 → 壁纸永远无法自动恢复。
+let scanPromise: Promise<WEWallpaper[]> | null = null
+export const ensureScan = async(): Promise<WEWallpaper[]> => {
+  if (scanCache && Date.now() - scanCache.at < CACHE_TTL) return scanCache.list
+  scanPromise ??= scanWallpaperEngineLibrary().finally(() => { scanPromise = null })
+  return scanPromise
+}
+export const resolveMediaPath = async(id: string): Promise<string | null> => {
+  const item = (await ensureScan()).find(item2 => item2.id == id)
+  return item ? (item.mediaPath || item.previewPath || null) : null
+}
+export const resolvePreviewPath = async(id: string): Promise<string | null> => {
+  const item = (await ensureScan()).find(item2 => item2.id == id)
+  return item ? (item.previewPath || null) : null
+}
+
 export const scanWallpaperEngineLibrary = async(force = false): Promise<WEWallpaper[]> => {
   if (!force && scanCache && Date.now() - scanCache.at < CACHE_TTL) return scanCache.list
   const containers = await discoverWEContainers()
