@@ -49,17 +49,12 @@ const currentSource = ref('')
 const rightClickItemIndex = ref(-1)
 
 const handleToggleList = (id) => {
-  console.log('[LB-DIAG] handleToggleList', id, 'source=' + (currentSource.value || props.source))
   router.replace({
     path: route.path,
     query: {
       source: currentSource.value || props.source,
       boardId: id,
     },
-  }).then(() => {
-    console.log('[LB-DIAG] replace done', route.query.boardId)
-  }).catch((e) => {
-    console.log('[LB-DIAG] replace FAILED', e && (e.message || e))
   })
 }
 
@@ -83,23 +78,17 @@ const handleMenuClick = (action) => {
 }
 
 
-watch(() => props.source, async(source) => {
-  // const source = (await getLeaderboardSetting()).source as LX.OnlineSource
-  // Luminous Harmonic: 自给自足 — props.source 无效时回退到 'kw' (内置榜单),
-  // 不再依赖父组件时序: 此前 source 空值挂载后永远空白 (用户反馈排行榜不显示)
+// Luminous Harmonic: 直接监听 route.query.source (与 MusicList 同法) —
+// props.source 受父组件挂载时序影响, 路由 query 是确定性数据源
+watch(() => route.query.source, async(source) => {
   const src = source && musicSdk[source]?.leaderboard ? source : 'kw'
   currentSource.value = src
   let boardList = boards[src]
   if (boardList == null) setBoard(boardList = await getBoardsList(src), src)
   list.splice(0, list.length, ...boardList.list)
-  console.log('[LB-DIAG] boards loaded', boardList.list.length)
-  // Luminous Harmonic: 自动选中第一个榜前, 同时检查路由 query — 重挂载瞬间
-  // 父组件的 boardId ref 赋值可能晚于本组件挂载, 若只看 props 会误判为空
-  // 而跳回第一个榜 (点击其他榜后被拽回 kw__93 的根因)
-  if (!props.boardId && !route.query.boardId && boardList.list.length) handleToggleList(boardList.list[0].id)
-}, {
-  immediate: true,
-})
+  // 仅在路由确实没有 boardId 时才自动选中第一个榜
+  if (!route.query.boardId && boardList.list.length) handleToggleList(boardList.list[0].id)
+}, { immediate: true })
 
 defineExpose({ hideMenu: handleMenuClick })
 

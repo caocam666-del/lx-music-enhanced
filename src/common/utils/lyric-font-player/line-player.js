@@ -184,6 +184,19 @@ export default class LinePlayer {
     this._refresh()
   }
 
+  // Luminous Harmonic: 静默停止 — 重置播放状态与时钟, 但不回调 onPlay.
+  // 换词/重建时必须用这个而不是 pause(): pause() 会用"当前时钟"计算行号并回调
+  // onPlay, 而自然播完切歌时该时钟停留在上一首歌的末尾, 导致新歌词刚设置就被
+  // 回调定位到中间/末尾 (歌词乱跳的根因). 手动切歌因先 stop() 清空歌词,
+  // lines 为空时 pause 提前返回, 所以只有自动切歌会暴露.
+  _silentReset() {
+    this.isPlay = false
+    timeoutTools.clear()
+    this.curLineNum = -1
+    this._startTime = 0
+    this._performanceTime = getNow()
+  }
+
   play(curTime = 0) {
     if (!this.lines.length) return
     this.pause()
@@ -219,7 +232,8 @@ export default class LinePlayer {
 
   setLyric(lyric, extendedLyrics) {
     // console.log(extendedLyrics)
-    if (this.isPlay) this.pause()
+    // Luminous Harmonic: 用静默重置替代 pause() — 换词不得用旧时钟触发 onPlay (乱跳根因)
+    this._silentReset()
     this.lyric = lyric
     this.extendedLyrics = extendedLyrics
     this._init()

@@ -22,8 +22,11 @@ import { sourceNames } from '@renderer/store'
 import { useRoute, useRouter } from '@common/utils/vueRouter'
 
 
-const source = ref('')
-const boardId = ref(null)
+// Luminous Harmonic: source/boardId 由路由 query 派生 (computed, 只读) —
+// 组件内时序无关, 彻底避免首次挂载空值 / 异步赋值竞态
+let route
+const source = computed(() => route?.query?.source || '')
+const boardId = computed(() => route?.query?.boardId || '')
 
 const verifyQueryParams = async function(to, from, next) {
   let _source = to.query.source
@@ -44,8 +47,6 @@ const verifyQueryParams = async function(to, from, next) {
     return
   }
   next()
-  source.value = _source
-  boardId.value = _boardId
   void setLeaderboardSetting({ source: _source, boardId: _boardId })
 }
 
@@ -65,11 +66,10 @@ export default {
       return sources.map(s => ({ id: s, name: sourceNames.value[s] }))
     })
     const router = useRouter()
-    const route = useRoute()
+    route = useRoute()
     // Luminous Harmonic: 兜底 — 路由 query 变化直接同步 ref (不依赖组件内守卫的触发时序),
     // 修复点击榜单后歌曲列表不切换的问题
-    watch(() => route.query.boardId, (id) => { if (id && id != boardId.value) boardId.value = id })
-    watch(() => route.query.source, (src) => { if (src && src != source.value) source.value = src })
+    // source/boardId 是 computed (派生自 route), 无需 watch 同步
 
     const handleToggleSource = (id) => {
       void router.replace({

@@ -23,11 +23,17 @@ export default () => {
     noItemLabel: '',
   })
 
+  // Luminous Harmonic: 记录搜索标识 — 只有新的搜索/翻页才滚到顶部, 避免浏览时被拽回
+  let lastSearchKey = ''
+
   const search = (text: string, source: SearchSource, page: number) => {
     listInfo.value = listInfos[source] as ListInfo
     if (text.length) void addHistoryWord(text)
+    const key = `${text}__${source}__${page}`
+    const shouldScrollTop = key !== lastSearchKey
+    lastSearchKey = key
     void searchMusic(text, page, source).then((list: LX.Music.MusicInfo[]) => {
-      if (list.length) {
+      if (list.length && shouldScrollTop) {
         setTimeout(() => {
           if (listRef.value) listRef.value.scrollToTop()
         })
