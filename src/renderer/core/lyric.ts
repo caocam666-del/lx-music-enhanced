@@ -209,28 +209,30 @@ export const setLyric = () => {
   // Luminous Harmonic: 换词后同步播放位置. 严格钳制 —
   // 换曲加载窗口内 audio.currentTime 可能是①新音源已切换(0, 正确) 或
   // ②仍是旧元素残留的旧歌时长(≈旧时长). 后者会把新歌词直接定位到末尾 (乱跳根因).
-  // 判别: 负值 / 超出新歌词时长 / 落在旧歌时长附近 → 一律从 0 开始.
-  syncPlayPosition()
+  syncPlayPosition(false)
 }
 
-/** 按音频元素实时位置同步歌词 (供换词/新歌开始播放时调用) */
-export const syncPlayPosition = () => {
+/**
+ * 按音频元素实时位置同步歌词.
+ * @param trusted 时间是否可信. 播放器事件 (loadeddata/canplay/playing) 触发时为 true —
+ *   此刻新音源已就绪, currentTime 必然属于当前歌曲 (含尾奏区间, 尾奏时 time 会大于
+ *   最后一行歌词时间, 属正常, 不能归零);
+ *   换词 (setLyric) 触发时为 false — 此刻可能仍未切换到新音源, currentTime 可能是
+ *   上一首的残留时长, 需严格判别后才归零, 否则新歌词会被直接定位到末行.
+ */
+export const syncPlayPosition = (trusted = false) => {
   if (!isPlay.value && !isAudioActivelyPlaying()) return
   setTimeout(() => {
     // 注意: 本地 getCurrentTime() 已返回毫秒 (内部 getPlayerCurrentTime()*1000), 不能再乘
     let time = getCurrentTime()
-    const lines = lrc.linePlayer?.lines
-    const lyricDuration = lines?.length ? lines[lines.length - 1].time : Infinity
-    const oldMax = (playProgress.maxPlayTime || 0) * 1000
-    // 钳制: 负值 / 超出当前歌词时长 / 接近旧歌末尾 / 歌词未就绪或时长未知
-    // 时的时间不可信 → 一律从 0 开始 (换曲加载窗口内 currentTime 属旧音源)
-    const durationUnknown = !isFinite(lyricDuration) || !lines?.length
-    if (
-      time < 0 ||
-      durationUnknown ||
-      time > lyricDuration ||
-      (oldMax > 0 && time > oldMax - 3000)
-    ) time = 0
+    if (time < 0) time = 0
+    if (!trusted) {
+      const lines = lrc.linePlayer?.lines
+      const lyricDuration = lines?.length ? lines[lines.length - 1].time : Infinity
+      const oldMax = (playProgress.maxPlayTime || 0) * 1000
+      // 不可信来源的残留判别: 歌词未就绪 / 超出最后一行 / 落在旧歌末尾 3s 内 → 从 0 开始
+      if (!lines?.length || !isFinite(lyricDuration) || time > lyricDuration || (oldMax > 0 && time > oldMax - 3000)) time = 0
+    }
     sendDesktopLyricInfo({ action: 'set_play', data: time })
     lrc.play(time)
   })
