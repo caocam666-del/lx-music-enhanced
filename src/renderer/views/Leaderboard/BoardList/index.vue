@@ -49,12 +49,17 @@ const currentSource = ref('')
 const rightClickItemIndex = ref(-1)
 
 const handleToggleList = (id) => {
-  void router.replace({
+  console.log('[LB-DIAG] handleToggleList', id, 'source=' + (currentSource.value || props.source))
+  router.replace({
     path: route.path,
     query: {
       source: currentSource.value || props.source,
       boardId: id,
     },
+  }).then(() => {
+    console.log('[LB-DIAG] replace done', route.query.boardId)
+  }).catch((e) => {
+    console.log('[LB-DIAG] replace FAILED', e && (e.message || e))
   })
 }
 
@@ -87,7 +92,11 @@ watch(() => props.source, async(source) => {
   let boardList = boards[src]
   if (boardList == null) setBoard(boardList = await getBoardsList(src), src)
   list.splice(0, list.length, ...boardList.list)
-  if (!props.boardId && boardList.list.length) handleToggleList(boardList.list[0].id)
+  console.log('[LB-DIAG] boards loaded', boardList.list.length)
+  // Luminous Harmonic: 自动选中第一个榜前, 同时检查路由 query — 重挂载瞬间
+  // 父组件的 boardId ref 赋值可能晚于本组件挂载, 若只看 props 会误判为空
+  // 而跳回第一个榜 (点击其他榜后被拽回 kw__93 的根因)
+  if (!props.boardId && !route.query.boardId && boardList.list.length) handleToggleList(boardList.list[0].id)
 }, {
   immediate: true,
 })
