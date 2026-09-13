@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { watch } from '@common/utils/vueTools'
 import useList from './useList'
+import { useRoute } from '@common/utils/vueRouter'
 
 
 const props = defineProps<{
@@ -33,12 +34,15 @@ const {
   handlePlayList,
 } = useList()
 
-watch(() => props.boardId, (boardId) => {
+const route = useRoute()
+
+// Luminous Harmonic: 直接监听 route.query.boardId — props.boardId 在首次挂载时
+// 可能还是 undefined (父组件 verifyQueryParams 异步设置), 时序竞态导致歌曲列表
+// 永远不加载 (用户反馈排行榜不显示). route.query 是确定性的数据源.
+watch(() => route.query.boardId, (boardId) => {
   if (!boardId) return
-  getList(boardId, 1)
-}, {
-  immediate: true,
-})
+  getList(String(boardId), 1)
+}, { immediate: true })
 
 
 const hideListsMenu = () => {
