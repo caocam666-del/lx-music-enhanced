@@ -162,7 +162,7 @@ export const setLyricOffset = (offset: number) => {
 
   if (isPlay.value) {
     setTimeout(() => {
-      const time = getCurrentTime() * 1000
+      const time = getCurrentTime()
       sendDesktopLyricInfo({
         action: 'set_play',
         data: time,
@@ -177,7 +177,7 @@ export const setPlaybackRate = (rate: number) => {
 
   if (isPlay.value) {
     setTimeout(() => {
-      const time = getCurrentTime() * 1000
+      const time = getCurrentTime()
       lrc.play(time)
     })
   }
@@ -206,25 +206,34 @@ export const setLyric = () => {
     })
   }
 
-  // Luminous Harmonic: 门控用音频元素真实播放状态 (不用 isPlay.value) —
-  // 自动切歌时本函数在 stop() 之后/新歌 play 事件之前执行, isPlay.value 仍是 false,
-  // 旧代码整段同步被跳过 → 新歌词卡住不跟随 (插桩实测)
-  if (isPlay.value || isAudioActivelyPlaying()) {
-    setTimeout(() => {
-      let time = getCurrentTime() * 1000
-      const lines = lrc.linePlayer?.lines
-      const lyricDuration = lines?.length ? lines[lines.length - 1].time : Infinity
-      // Luminous Harmonic: 换曲加载窗口内 getCurrentTime() 可能是旧元素的残留时间
-      // (自然播完时停在旧歌末尾). 判别: 残留时间超出新歌词时长, 或落在旧歌时长
-      // 末尾 1.5s 内 → 新歌从 0 开始同步; 其余 (跨fade晋升, 新歌确已播放几秒)
-      // → 保留实时时间. 不做此处理, 引擎会继承旧内部时钟卡在末尾不再跟随.
-      const oldMax = (playProgress.maxPlayTime || 0) * 1000
-      // 时间钳制: 超出新歌词时长 / 落在旧歌末尾 / 负值 → 从 0 开始
-      if (time < 0 || time > lyricDuration + 30000 || (oldMax > 0 && oldMax - time < 1500)) time = 0
-      sendDesktopLyricInfo({ action: 'set_play', data: time })
-      lrc.play(time)
-    })
-  }
+  // Luminous Harmonic: 换词后同步播放位置. 严格钳制 —
+  // 换曲加载窗口内 audio.currentTime 可能是①新音源已切换(0, 正确) 或
+  // ②仍是旧元素残留的旧歌时长(≈旧时长). 后者会把新歌词直接定位到末尾 (乱跳根因).
+  // 判别: 负值 / 超出新歌词时长 / 落在旧歌时长附近 → 一律从 0 开始.
+  syncPlayPosition()
+}
+
+/** 按音频元素实时位置同步歌词 (供换词/新歌开始播放时调用) */
+export const syncPlayPosition = () => {
+  if (!isPlay.value && !isAudioActivelyPlaying()) return
+  setTimeout(() => {
+    // 注意: 本地 getCurrentTime() 已返回毫秒 (内部 getPlayerCurrentTime()*1000), 不能再乘
+    let time = getCurrentTime()
+    const lines = lrc.linePlayer?.lines
+    const lyricDuration = lines?.length ? lines[lines.length - 1].time : Infinity
+    const oldMax = (playProgress.maxPlayTime || 0) * 1000
+    // 钳制: 负值 / 超出当前歌词时长 / 接近旧歌末尾 / 歌词未就绪或时长未知
+    // 时的时间不可信 → 一律从 0 开始 (换曲加载窗口内 currentTime 属旧音源)
+    const durationUnknown = !isFinite(lyricDuration) || !lines?.length
+    if (
+      time < 0 ||
+      durationUnknown ||
+      time > lyricDuration ||
+      (oldMax > 0 && time > oldMax - 3000)
+    ) time = 0
+    sendDesktopLyricInfo({ action: 'set_play', data: time })
+    lrc.play(time)
+  })
 }
 
 /**
@@ -299,7 +308,7 @@ export const sendInfo = () => {
       pic: musicInfo.pic,
       isPlay: isPlay.value,
       line: lyric.line,
-      played_time: getCurrentTime() * 1000,
+      played_time: getCurrentTime(),
     },
   })
 }

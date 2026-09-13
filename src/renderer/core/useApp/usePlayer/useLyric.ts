@@ -10,6 +10,7 @@ import {
   init,
   sendInfo,
   setPlaybackRate,
+  syncPlayPosition,
 } from '@renderer/core/lyric'
 import { appSetting } from '@renderer/store/setting'
 import { isPlay } from '@renderer/store/player/state'
@@ -37,6 +38,11 @@ export default () => {
   watch(() => appSetting['player.isSwapLyricTranslationAndRoma'], setLyric)
   watch(() => appSetting['player.isPlayLxlrc'], setLyric)
 
+  // Luminous Harmonic: 新歌就绪/开始播放时按真实位置再同步一次 — 此时
+  // audio.currentTime 必然属于新音源, 是换曲歌词定位最可靠的时点
+  window.app_event.on('playerLoadeddata', syncPlayPosition)
+  window.app_event.on('playerCanplay', syncPlayPosition)
+  window.app_event.on('playerPlaying', syncPlayPosition)
   window.app_event.on('play', play)
   window.app_event.on('pause', pause)
   window.app_event.on('stop', stop)
@@ -46,6 +52,9 @@ export default () => {
   window.app_event.on('setPlaybackRate', handleApplyPlaybackRate)
 
   onBeforeUnmount(() => {
+    window.app_event.off('playerLoadeddata', syncPlayPosition)
+    window.app_event.off('playerCanplay', syncPlayPosition)
+    window.app_event.off('playerPlaying', syncPlayPosition)
     window.app_event.off('play', play)
     window.app_event.off('pause', pause)
     window.app_event.off('stop', stop)
