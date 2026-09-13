@@ -1,5 +1,5 @@
 import Lyric from '@common/utils/lyric-font-player'
-import { getAnalyser, getCurrentTime as getPlayerCurrentTime } from '@renderer/plugins/player'
+import { getAnalyser, getCurrentTime as getPlayerCurrentTime, isAudioActivelyPlaying } from '@renderer/plugins/player'
 import { lyric, setLines, setOffset, setTempOffset, setText } from '@renderer/store/player/lyric'
 import { isPlay, musicInfo } from '@renderer/store/player/state'
 import { setStatusText } from '@renderer/store/player/action'
@@ -206,7 +206,10 @@ export const setLyric = () => {
     })
   }
 
-  if (isPlay.value) {
+  // Luminous Harmonic: 门控用音频元素真实播放状态 (不用 isPlay.value) —
+  // 自动切歌时本函数在 stop() 之后/新歌 play 事件之前执行, isPlay.value 仍是 false,
+  // 旧代码整段同步被跳过 → 新歌词卡住不跟随 (插桩实测)
+  if (isPlay.value || isAudioActivelyPlaying()) {
     setTimeout(() => {
       let time = getCurrentTime() * 1000
       const lines = lrc.linePlayer?.lines
@@ -216,7 +219,8 @@ export const setLyric = () => {
       // 末尾 1.5s 内 → 新歌从 0 开始同步; 其余 (跨fade晋升, 新歌确已播放几秒)
       // → 保留实时时间. 不做此处理, 引擎会继承旧内部时钟卡在末尾不再跟随.
       const oldMax = (playProgress.maxPlayTime || 0) * 1000
-      if (time > lyricDuration + 30000 || (oldMax > 0 && oldMax - time < 1500)) time = 0
+      // 时间钳制: 超出新歌词时长 / 落在旧歌末尾 / 负值 → 从 0 开始
+      if (time < 0 || time > lyricDuration + 30000 || (oldMax > 0 && oldMax - time < 1500)) time = 0
       sendDesktopLyricInfo({ action: 'set_play', data: time })
       lrc.play(time)
     })

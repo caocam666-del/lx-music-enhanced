@@ -12,6 +12,7 @@ import {
   setPlaybackRate,
 } from '@renderer/core/lyric'
 import { appSetting } from '@renderer/store/setting'
+import { isPlay } from '@renderer/store/player/state'
 
 const handleApplyPlaybackRate = debounce(setPlaybackRate, 300)
 
@@ -22,6 +23,14 @@ export default () => {
     stop()
     sendInfo()
   }
+
+  // Luminous Harmonic: 播放真正开始时(而非切歌瞬间)同步歌词 — 自动切歌时
+  // setLyric 执行于 stop() 之后/新歌 play 事件之前, 那一刻既非 isPlay 也非
+  // 音频播放中, 时间源也不可靠; 等 isPlay 变 true (新歌已实际开始播放)
+  // 再同步一次, 用真实 currentTime 定位, 这是自动切歌歌词跟随的可靠保证.
+  watch(isPlay, (playing) => {
+    if (playing) play()
+  })
 
   watch(() => appSetting['player.isShowLyricTranslation'], setLyric)
   watch(() => appSetting['player.isShowLyricRoma'], setLyric)

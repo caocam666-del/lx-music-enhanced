@@ -505,7 +505,7 @@ export default {
   overflow: hidden;
   // Luminous Harmonic: 节奏律动的「亮度脉动」分量 — 静止 0.85, 鼓点峰值 1.0,
   // 律动读作流光呼吸; 几何缩放幅度也已减半, 封面/歌词完全不受影响
-  opacity: ~"min(1, 0.85 + (var(--flow-breath, 1) - 1) * 2)";
+  opacity: var(--flow-breath, 0.9);
 }
 .flowMask {
   position: absolute;
@@ -579,16 +579,16 @@ export default {
   }
 }
 @keyframes flow-rotate-1 {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg) scale(var(--flow-scale, 1)); }
+  to { transform: rotate(360deg) scale(var(--flow-scale, 1)); }
 }
 @keyframes flow-rotate-2 {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg) scale(var(--flow-scale, 1)); }
+  to { transform: rotate(360deg) scale(var(--flow-scale, 1)); }
 }
 @keyframes flow-rotate-3 {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg) scale(var(--flow-scale, 1)); }
+  to { transform: rotate(360deg) scale(var(--flow-scale, 1)); }
 }
 // 色斑位置的正弦微漂移 (Pure-music driftAmp 0.052 的收敛近似)
 @keyframes flow-drift-primary {
