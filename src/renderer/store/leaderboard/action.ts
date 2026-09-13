@@ -35,7 +35,11 @@ export const clearListDetail = () => {
 
 export const getBoardsList = async(source: LX.OnlineSource) => {
   // const source = (await getLeaderboardSetting()).source as LX.OnlineSource
-  return musicSdk[source]?.leaderboard.getBoards() as Promise<Board>
+  // Luminous Harmonic: source 无效/未就绪时返回空列表而不是抛错 —
+  // 此前 musicSdk[''].leaderboard.getBoards() 直接抛
+  // 'Cannot read properties of undefined', 导致排行榜板块列表整个空白
+  if (!source || !musicSdk[source]?.leaderboard) return { list: [], source } as Board
+  return musicSdk[source].leaderboard.getBoards() as Promise<Board>
 }
 
 /**

@@ -179,6 +179,7 @@ export default {
       return list
     }
 
+    let sizeObserver = null
     const updateView = (currentScrollTop = dom_scrollContainer.value?.scrollTop) => {
       // 卸载后排队的 nextTick/rAF 仍可能触发, 此时滚动容器已为 null, 跳过即可
       if (currentScrollTop == null || !dom_scrollContainer.value) return
@@ -332,11 +333,18 @@ export default {
         })
       }
       window.addEventListener('resize', handleResize)
+      // Luminous Harmonic: 容器尺寸从 0 变为正常时重新渲染 —
+      // 路由重挂载瞬间容器高度为 0, updateView 渲染 0 行后不再恢复 (榜单切换空列表根因)
+      if (typeof ResizeObserver !== 'undefined' && dom_scrollContainer.value) {
+        sizeObserver = new ResizeObserver(() => { updateView() })
+        sizeObserver.observe(dom_scrollContainer.value)
+      }
     })
     onBeforeUnmount(() => {
       dom_scrollContainer.value.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', handleResize)
       if (cancelScroll) cancelScroll()
+      sizeObserver?.disconnect()
     })
 
     return {

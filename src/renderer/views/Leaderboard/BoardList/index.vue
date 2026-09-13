@@ -23,6 +23,7 @@
 <script setup>
 import { watch, shallowReactive, ref } from '@common/utils/vueTools'
 import { getBoardsList, setBoard } from '@renderer/store/leaderboard/action'
+import musicSdk from '@renderer/utils/musicSdk'
 import { boards } from '@renderer/store/leaderboard/state'
 import useMenu from './useMenu'
 import { useRouter, useRoute } from '@common/utils/vueRouter'
@@ -44,13 +45,14 @@ const router = useRouter()
 const route = useRoute()
 
 const list = shallowReactive([])
+const currentSource = ref('')
 const rightClickItemIndex = ref(-1)
 
 const handleToggleList = (id) => {
   void router.replace({
     path: route.path,
     query: {
-      source: props.source,
+      source: currentSource.value || props.source,
       boardId: id,
     },
   })
@@ -78,8 +80,12 @@ const handleMenuClick = (action) => {
 
 watch(() => props.source, async(source) => {
   // const source = (await getLeaderboardSetting()).source as LX.OnlineSource
-  let boardList = boards[source]
-  if (boardList == null) setBoard(boardList = await getBoardsList(source), source)
+  // Luminous Harmonic: 自给自足 — props.source 无效时回退到 'kw' (内置榜单),
+  // 不再依赖父组件时序: 此前 source 空值挂载后永远空白 (用户反馈排行榜不显示)
+  const src = source && musicSdk[source]?.leaderboard ? source : 'kw'
+  currentSource.value = src
+  let boardList = boards[src]
+  if (boardList == null) setBoard(boardList = await getBoardsList(src), src)
   list.splice(0, list.length, ...boardList.list)
   if (!props.boardId && boardList.list.length) handleToggleList(boardList.list[0].id)
 }, {

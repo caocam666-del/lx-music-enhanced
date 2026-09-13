@@ -32,8 +32,10 @@ const verifyQueryParams = async function(to, from, next) {
   if (_source == null) {
     const setting = await getLeaderboardSetting()
     if (_source == null) {
-      _source = setting.source
-      _boardId = setting.boardId
+      // Luminous Harmonic: 设置缺失时兜底默认 kw 飙升榜 (避免空 source/boardId
+      // 导致页面挂载后两个列表永远空白)
+      _source = setting.source || 'kw'
+      _boardId = setting.boardId || 'kw__93'
     }
     next({
       path: to.path,
