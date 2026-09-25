@@ -1,36 +1,42 @@
 <template lang="pug">
+//- Luminous Harmonic: 功能按钮组 — part='all' 渲染全部 (默认, 其他调用方不变);
+//- part='left' / 'right' 只渲染对应半组, 供详情页底栏把功能按钮
+//- 均匀分布到播放控制两侧 (左组: 桌面歌词/频谱/视图切换/评论;
+//- 右组: 音效/倍速/音量/播放模式/收藏)
 div(:class="$style.footerLeftControlBtns")
-  button(:class="[$style.footerLeftControlBtn, $style.lrcBtn]" :aria-label="toggleDesktopLyricBtnTitle" @click="toggleDesktopLyric" @contextmenu="toggleLockDesktopLyric")
-    svg(v-show="appSetting['desktopLyric.enable']" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="125%" viewBox="0 0 512 512" space="preserve")
-      use(xlink:href="#icon-desktop-lyric-on")
-    svg(v-show="!appSetting['desktopLyric.enable']" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="125%" viewBox="0 0 512 512" space="preserve")
-      use(xlink:href="#icon-desktop-lyric-off")
-  button(:class="[$style.footerLeftControlBtn, { [$style.active]: appSetting['player.audioVisualization'] }]" :aria-label="$t('audio_visualization')" @click="toggleAudioVisualization")
-    svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="95%" viewBox="0 0 24 24" space="preserve")
-      use(xlink:href="#icon-audio-wave")
-  // Luminous Harmonic: 歌词/播放列表 视图切换 — 纯图标三线设计:
-  // 歌词 = 上下短中间长三条线; 播放列表 = 上中下等长三条线 (图标指向点击后将切换到的视图)
-  button(:class="[$style.footerLeftControlBtn, { [$style.active]: detailView === 'playlist' }]" :aria-label="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" :title="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" @click="toggleDetailView")
-    svg(v-if="detailView !== 'playlist'" version="1.1" xmlns="http://www.w3.org/2000/svg" width="95%" viewBox="0 0 24 24" space="preserve")
-      g(fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round")
-        line(x1="8" y1="6" x2="16" y2="6")
-        line(x1="4" y1="12" x2="20" y2="12")
-        line(x1="8" y1="18" x2="16" y2="18")
-    svg(v-else version="1.1" xmlns="http://www.w3.org/2000/svg" width="95%" viewBox="0 0 24 24" space="preserve")
-      g(fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round")
-        line(x1="4" y1="6" x2="20" y2="6")
-        line(x1="4" y1="12" x2="20" y2="12")
-        line(x1="4" y1="18" x2="20" y2="18")
-  button(:class="[$style.footerLeftControlBtn, {[$style.active]: isShowPlayComment}]" :aria-label="$t('comment__show')" @click="toggleVisibleComment")
-    svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="95%" viewBox="0 0 24 24" space="preserve")
-      use(xlink:href="#icon-comment")
-  common-sound-effect-btn
-  common-playback-rate-btn
-  common-volume-btn
-  common-toggle-play-mode-btn
-  button(:class="$style.footerLeftControlBtn" :aria-label="$t('player__add_music_to')" @click="isShowAddMusicTo = true")
-    svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" space="preserve")
-      use(xlink:href="#icon-add-2")
+  template(v-if="part === 'all' || part === 'left'")
+    button(:class="[$style.footerLeftControlBtn, $style.lrcBtn]" :aria-label="toggleDesktopLyricBtnTitle" @click="toggleDesktopLyric" @contextmenu="toggleLockDesktopLyric")
+      svg(v-show="appSetting['desktopLyric.enable']" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="125%" viewBox="0 0 512 512" space="preserve")
+        use(xlink:href="#icon-desktop-lyric-on")
+      svg(v-show="!appSetting['desktopLyric.enable']" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="125%" viewBox="0 0 512 512" space="preserve")
+        use(xlink:href="#icon-desktop-lyric-off")
+    button(:class="[$style.footerLeftControlBtn, { [$style.active]: appSetting['player.audioVisualization'] }]" :aria-label="$t('audio_visualization')" @click="toggleAudioVisualization")
+      svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="95%" viewBox="0 0 24 24" space="preserve")
+        use(xlink:href="#icon-audio-wave")
+    // Luminous Harmonic: 歌词/播放列表 视图切换 — 纯图标三线设计:
+    // 歌词 = 上下短中间长三条线; 播放列表 = 上中下等长三条线 (图标指向点击后将切换到的视图)
+    button(:class="[$style.footerLeftControlBtn, { [$style.active]: detailView === 'playlist' }]" :aria-label="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" :title="detailView === 'playlist' ? $t('player__detail_view_lyric') : $t('player__detail_view_playlist')" @click="toggleDetailView")
+      svg(v-if="detailView !== 'playlist'" version="1.1" xmlns="http://www.w3.org/2000/svg" width="95%" viewBox="0 0 24 24" space="preserve")
+        g(fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round")
+          line(x1="8" y1="6" x2="16" y2="6")
+          line(x1="4" y1="12" x2="20" y2="12")
+          line(x1="8" y1="18" x2="16" y2="18")
+      svg(v-else version="1.1" xmlns="http://www.w3.org/2000/svg" width="95%" viewBox="0 0 24 24" space="preserve")
+        g(fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round")
+          line(x1="4" y1="6" x2="20" y2="6")
+          line(x1="4" y1="12" x2="20" y2="12")
+          line(x1="4" y1="18" x2="20" y2="18")
+    button(:class="[$style.footerLeftControlBtn, {[$style.active]: isShowPlayComment}]" :aria-label="$t('comment__show')" @click="toggleVisibleComment")
+      svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="95%" viewBox="0 0 24 24" space="preserve")
+        use(xlink:href="#icon-comment")
+  template(v-if="part === 'all' || part === 'right'")
+    common-sound-effect-btn
+    common-playback-rate-btn
+    common-volume-btn
+    common-toggle-play-mode-btn
+    button(:class="$style.footerLeftControlBtn" :aria-label="$t('player__add_music_to')" @click="isShowAddMusicTo = true")
+      svg(version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" space="preserve")
+        use(xlink:href="#icon-add-2")
   common-list-add-modal(v-model:show="isShowAddMusicTo" :music-info="playMusicInfo.musicInfo")
 
 </template>
@@ -55,6 +61,14 @@ import { setMediaDeviceId } from '@renderer/plugins/player'
 import { appSetting, saveMediaDeviceId, setEnableAudioVisualization } from '@renderer/store/setting'
 
 export default {
+  props: {
+    // Luminous Harmonic: part 模式 — 'all' 渲染全部 (默认, 其他调用方不变),
+    // 'left'/'right' 只渲染对应半组, 供详情页底栏把功能按钮分布到播放控制两侧
+    part: {
+      type: String,
+      default: 'all',
+    },
+  },
   setup() {
     const t = useI18n()
 
@@ -149,23 +163,7 @@ export default {
     &::before {
       content: '';
       position: absolute;
-      inset: -5px;
     }
-
-    &:hover {
-      opacity: 1;
-    }
-
-    &.active {
-      // 激活态用强调色（亮化版）突出
-      color: color-mix(in srgb, var(--detail-accent-bright, var(--detail-accent-color, var(--color-primary))) 88%, white);
-      opacity: 1;
-    }
-  }
-
-  .lrcBtn {
-    width: 20px;
   }
 }
-
 </style>

@@ -14,10 +14,10 @@
       </div>
       <span :class="$style.timeLabel">{{ maxPlayTimeStr }}</span>
     </div>
-    <!-- Luminous Harmonic: 控制行 — 播放控制居中, 功能按钮均匀分布在两侧 -->
+    <!-- Luminous Harmonic: 控制行 — 播放控制居中, 功能按钮左右两组均匀分布 -->
     <div :class="$style.controlRow">
       <div :class="$style.sideTools">
-        <control-btns />
+        <control-btns part="left" />
       </div>
       <div :class="$style.playControl">
         <div :class="$style.playBtn" :aria-label="$t('player__prev')" @click="playPrev()">
@@ -34,6 +34,7 @@
         </div>
       </div>
       <div :class="[$style.sideTools, $style.sideRight]">
+        <control-btns part="right" />
         <span :class="$style.status">{{ status }}</span>
       </div>
     </div>
