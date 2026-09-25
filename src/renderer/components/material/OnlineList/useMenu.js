@@ -37,14 +37,14 @@ export default ({
         disabled: !itemMenuControl.play,
       },
       {
-        name: t('list__download'),
-        action: 'download',
-        disabled: !itemMenuControl.download,
-      },
-      {
         name: t('list__play_later'),
         action: 'playLater',
         disabled: !itemMenuControl.playLater,
+      },
+      {
+        name: t('list__download'),
+        action: 'download',
+        disabled: !itemMenuControl.download,
       },
       {
         name: t('list__search'),

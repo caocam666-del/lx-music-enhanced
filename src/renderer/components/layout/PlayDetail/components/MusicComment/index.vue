@@ -19,7 +19,8 @@ div.comment(ref="dom_container" :class="$style.comment")
         div(:class="$style.tab_content")
           div.scroll(ref="dom_commentHot" :class="$style.tab_content_scroll")
             p(v-if="hotComment.isLoadError" :class="$style.commentLabel" style="cursor: pointer;" @click="handleGetHotComment(currentMusicInfo, hotComment.nextPage, hotComment.limit)") {{ $t('comment__hot_load_error') }}
-            p(v-else-if="hotComment.isLoading && !hotComment.list.length" :class="$style.commentLabel") {{ $t('comment__hot_loading') }}
+            div(v-else-if="hotComment.isLoading && !hotComment.list.length" :class="$style.skeleton")
+              div(v-for="i in 6" :key="i" class="lx-shimmer" :style="{ height: '44px', marginBottom: '12px', borderRadius: '8px', width: '100%', opacity: 1 - i * 0.09 }")
             comment-floor(v-if="!hotComment.isLoadError && hotComment.list.length" :class="[$style.commentFloor, hotComment.isLoading ? $style.loading : null]" :comments="hotComment.list")
             p(v-else-if="!hotComment.isLoadError && !hotComment.isLoading" :class="$style.commentLabel") {{ $t('comment__no_content') }}
             div(:class="$style.pagination")
@@ -27,7 +28,8 @@ div.comment(ref="dom_container" :class="$style.comment")
         div(:class="$style.tab_content")
           div.scroll(ref="dom_commentNew" :class="$style.tab_content_scroll")
             p(v-if="newComment.isLoadError" :class="$style.commentLabel" style="cursor: pointer;" @click="handleGetNewComment(currentMusicInfo, newComment.nextPage, newComment.limit)") {{ $t('comment__new_load_error') }}
-            p(v-else-if="newComment.isLoading && !newComment.list.length" :class="$style.commentLabel") {{ $t('comment__new_loading') }}
+            div(v-else-if="newComment.isLoading && !newComment.list.length" :class="$style.skeleton")
+              div(v-for="i in 6" :key="i" class="lx-shimmer" :style="{ height: '44px', marginBottom: '12px', borderRadius: '8px', width: '100%', opacity: 1 - i * 0.09 }")
             comment-floor(v-if="!newComment.isLoadError && newComment.list.length" :class="[$style.commentFloor, newComment.isLoading ? $style.loading : null]" :comments="newComment.list")
             p(v-else-if="!newComment.isLoadError && !newComment.isLoading" :class="$style.commentLabel") {{ $t('comment__no_content') }}
             div(:class="$style.pagination")
@@ -352,6 +354,15 @@ export default {
 .commentFloor {
   opacity: 1;
   transition: opacity @transition-normal;
+
+  // Luminous Harmonic: 评论加载骨架屏 — 模拟评论行布局 (圆头像 + 内容条)
+  .skeleton {
+    padding: 4px 0;
+
+    :global(.lx-shimmer) {
+      display: flex;
+    }
+  }
 
   &.loading {
     opacity: .4;

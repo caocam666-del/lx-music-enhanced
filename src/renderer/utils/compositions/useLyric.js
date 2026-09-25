@@ -2,7 +2,7 @@ import { ref, onMounted, onBeforeUnmount, watch, nextTick } from '@common/utils/
 import { throttle, formatPlayTime2 } from '@common/utils/common'
 import { scrollTo } from '@common/utils/renderer'
 import { play } from '@renderer/core/player/action'
-import { appSetting } from '@renderer/store/setting'
+import { appSetting, updateSetting } from '@renderer/store/setting'
 // import { player as eventPlayerNames } from '@renderer/event/names'
 
 export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offset }) => {
@@ -171,8 +171,20 @@ export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offse
     }
   }
 
+  // Luminous Harmonic: Ctrl+滚轮 调整详情页歌词字号 (5% 步进, 范围 80~300),
+  // 直接写入设置 (与设置页同一数据源); 非 Ctrl 滚轮保持原有滚动行为
+  const handleWheelFontSize = (event) => {
+    if (!event.ctrlKey) return false
+    event.preventDefault()
+    event.stopPropagation()
+    const current = appSetting['playDetail.style.fontSize']
+    const next = Math.min(300, Math.max(80, current + (event.deltaY < 0 ? 5 : -5)))
+    if (next != current) updateSetting({ 'playDetail.style.fontSize': next })
+    return true
+  }
+
   const handleWheel = (event) => {
-    console.log(event.deltaY)
+    if (handleWheelFontSize(event)) return
     isStopScroll.value ||= true
     if (cancelScrollFn) {
       cancelScrollFn()
