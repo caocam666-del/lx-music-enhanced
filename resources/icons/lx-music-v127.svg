@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    Luminous Harmonic 应用图标 (任务栏/托盘) v2:
+    透明背景 · 无填充色块 · 头戴式耳机 + 简笔双音符
+    小尺寸优化: 描边 130 (16px 下 ≈2px), 符头实心大椭圆, 元素数量最少
+  -->
+  <g fill="none" stroke="#5b8def" stroke-width="130" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 头梁: 粗弧线横跨顶部 -->
+    <path d="M 235 420 A 277 250 0 0 1 789 420" />
+
+    <!-- 音符: 双符干 + 符梁, 整体在耳罩之间 -->
+    <path d="M 430 700 V 430" />
+    <path d="M 700 660 V 390" />
+    <path d="M 430 430 L 700 370" />
+
+    <!-- 两个实心符头 (椭圆填充, 与描边同色) -->
+    <ellipse cx="352" cy="706" rx="118" ry="92" transform="rotate(-12 352 706)" fill="#5b8def" stroke="none" />
+    <ellipse cx="622" cy="666" rx="118" ry="92" transform="rotate(-12 622 666)" fill="#5b8def" stroke="none" />
+  </g>
+
+  <!-- 耳罩: 实心圆角矩形, 压在音符两端之上 (最后绘制, 层级最高) -->
+  <g fill="#5b8def">
+    <rect x="128" y="380" width="190" height="300" rx="90" />
+    <rect x="706" y="380" width="190" height="300" rx="90" />
+  </g>
+</svg>
