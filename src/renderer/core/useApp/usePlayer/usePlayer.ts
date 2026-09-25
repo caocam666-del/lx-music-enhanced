@@ -167,6 +167,7 @@ export default () => {
   window.app_event.on('error', () => {
     setPauseStatus()
     consecutivePlayErrors++
+    if (consecutivePlayErrors == 4) setAllStatus(t('player__error_skip_stopped'))
     if (consecutivePlayErrors <= 3) {
       setTimeout(() => {
         if (!isPlay.value) void playNext(true)

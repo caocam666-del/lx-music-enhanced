@@ -566,6 +566,7 @@
   "setting__play_detail_flow_rhythm": "Rhythm pulse (breathes with the music)",
   "setting__play_detail_ui_accent": "Component accent color",
   "setting__play_detail_ui_accent_cover": "Album cover colors",
+  "player__error_skip_stopped": "Multiple playback failures, auto-skip stopped",
   "setting__play_detail_ui_accent_cover_short": "Cover",
   "setting__play_lyric_lxlrc": "Playback with karaoke-style lyrics if available",
   "setting__play_lyric_lxlrc_tip": "This feature requires higher performance and is not recommended to be turned on for low performance devices!",
