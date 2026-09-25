@@ -2,7 +2,7 @@ import { ref, onMounted, onBeforeUnmount, watch, nextTick } from '@common/utils/
 import { throttle, formatPlayTime2 } from '@common/utils/common'
 import { scrollTo } from '@common/utils/renderer'
 import { play } from '@renderer/core/player/action'
-import { appSetting, updateSetting } from '@renderer/store/setting'
+import { appSetting, updateSetting as saveSetting } from '@renderer/store/setting'
 // import { player as eventPlayerNames } from '@renderer/event/names'
 
 export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offset }) => {
@@ -179,7 +179,10 @@ export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offse
     event.stopPropagation()
     const current = appSetting['playDetail.style.fontSize']
     const next = Math.min(300, Math.max(80, current + (event.deltaY < 0 ? 5 : -5)))
-    if (next != current) updateSetting({ 'playDetail.style.fontSize': next })
+    // Luminous Harmonic: 立即本地回写 (响应式生效) + 异步持久化 —
+    // 若只调 updateSetting (IPC 往返), appSetting 要等主进程回推才更新, 缩放会有明显延迟感
+    appSetting['playDetail.style.fontSize'] = next
+    void saveSetting({ 'playDetail.style.fontSize': next })
     return true
   }
 

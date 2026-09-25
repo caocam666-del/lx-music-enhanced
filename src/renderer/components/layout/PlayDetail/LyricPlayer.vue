@@ -68,7 +68,7 @@ import {
 import { onMounted, onBeforeUnmount, computed, reactive, ref, nextTick, watch } from '@common/utils/vueTools'
 import useLyric from '@renderer/utils/compositions/useLyric'
 import LyricMenu from './components/LyricMenu.vue'
-import { appSetting } from '@renderer/store/setting'
+import { appSetting, updateSetting } from '@renderer/store/setting'
 import { setLyricOffset } from '@renderer/core/lyric'
 import useSelectAllLrc from './useSelectAllLrc'
 
@@ -238,11 +238,31 @@ export default {
       }
     })
 
+    // Luminous Harmonic: Ctrl+滚轮在 window 捕获阶段全局缩放歌词字号 —
+    // 仅当光标位于歌词区上方时生效; preventDefault 阻止 Chromium 原生页面缩放
+    const handleCtrlWheelZoom = (e) => {
+      if (!e.ctrlKey) return
+      const lyr = document.querySelector('.lyric')
+      if (!lyr || !lyr.contains(e.target)) return
+      e.preventDefault()
+      e.stopPropagation()
+      const current = appSetting['playDetail.style.fontSize']
+      const next = Math.min(300, Math.max(80, current + (e.deltaY < 0 ? 5 : -5)))
+      if (next != current) {
+        appSetting['playDetail.style.fontSize'] = next
+        void updateSetting({ 'playDetail.style.fontSize': next })
+      }
+    }
+
     onMounted(() => {
       window.app_event.on('musicToggled', updateMusicInfo)
       window.app_event.on('lyricUpdated', updateMusicInfo)
+      // Luminous Harmonic: Ctrl+滚轮在 window 捕获阶段拦截 — Chromium 会把 ctrl+wheel
+      // 优先用于页面缩放, 元素级监听可能收不到; 捕获阶段抢先 preventDefault 才能稳定生效
+      window.addEventListener('wheel', handleCtrlWheelZoom, { capture: true, passive: false })
     })
     onBeforeUnmount(() => {
+      window.removeEventListener('wheel', handleCtrlWheelZoom, { capture: true })
       window.app_event.off('musicToggled', updateMusicInfo)
       window.app_event.off('lyricUpdated', updateMusicInfo)
       if (staggerTimer) {
