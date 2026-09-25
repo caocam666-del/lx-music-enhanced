@@ -54,7 +54,8 @@ const createDelayNextTimeout = (delay: number) => {
   }
 }
 const { addDelayNextTimeout, clearDelayNextTimeout } = createDelayNextTimeout(5000)
-const { addDelayNextTimeout: addLoadTimeout, clearDelayNextTimeout: clearLoadTimeout } = createDelayNextTimeout(100000)
+// Luminous Harmonic: 取 URL 加载超时从 100s 收紧到 20s — 音源失败后尽快自动切下一首, 避免长时间卡住
+const { addDelayNextTimeout: addLoadTimeout, clearDelayNextTimeout: clearLoadTimeout } = createDelayNextTimeout(20000)
 
 /**
  * 检查音乐信息是否已更改
@@ -386,9 +387,11 @@ setCrossfadeRequestHandler(async() => {
   if (!next || next.musicInfo.id === playMusicInfo.musicInfo?.id) return null // 无下一首/单曲循环 → 不做交叉
   // 注意: 必须用 getMusicUrl 而非 getMusicPlayUrl —
   // 后者的 diffCurrentMusicInfo 守卫带 "|| isPlay.value", 播放中恒为 true, 预载结果会被直接丢弃
+  // Luminous Harmonic: 预载也允许音源回退 — 此前 allowToggleSource=false,
+  // 当前源拿不到 URL 时直接放弃, 不会按设置依次尝试其他音源
   const url = await getMusicUrl({
     musicInfo: next.musicInfo,
-    allowToggleSource: false,
+    allowToggleSource: true,
     onToggleSource(mInfo) {
       void mInfo
     },

@@ -1,14 +1,8 @@
 <template>
   <div :class="$style.footer">
-    <div :class="$style.footerTools">
-      <control-btns />
-    </div>
-    <div :class="$style.playCore">
-      <!-- Luminous Harmonic: Pure-music 布局 — 进度条独立整行置顶，时间标签在条上方两端对齐 -->
-      <div :class="$style.timeRow">
-        <span :class="$style.timeLabel">{{ nowPlayTimeStr }}</span>
-        <span :class="$style.timeLabel">{{ maxPlayTimeStr }}</span>
-      </div>
+    <!-- Luminous Harmonic: 进度条横跨整个软件宽度 (Pure-music 布局) -->
+    <div :class="$style.progressRow">
+      <span :class="$style.timeLabel">{{ nowPlayTimeStr }}</span>
       <div :class="$style.progressContainer">
         <common-progress-bar
           :class-name="$style.progress"
@@ -17,6 +11,13 @@
           :is-active-transition="isActiveTransition"
           :wave="true"
         />
+      </div>
+      <span :class="$style.timeLabel">{{ maxPlayTimeStr }}</span>
+    </div>
+    <!-- Luminous Harmonic: 控制行 — 播放控制居中, 功能按钮均匀分布在两侧 -->
+    <div :class="$style.controlRow">
+      <div :class="$style.sideTools">
+        <control-btns />
       </div>
       <div :class="$style.playControl">
         <div :class="$style.playBtn" :aria-label="$t('player__prev')" @click="playPrev()">
@@ -32,9 +33,9 @@
           <svg viewBox="0 0 1024 1024" aria-hidden="true"><use xlink:href="#icon-nextMusic" /></svg>
         </div>
       </div>
-    </div>
-    <div :class="$style.footerStatus">
-      <span :class="$style.status">{{ status }}</span>
+      <div :class="[$style.sideTools, $style.sideRight]">
+        <span :class="$style.status">{{ status }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -60,12 +61,12 @@ const {
 .footer {
   flex: 0 0 104px;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(290px, 1fr) minmax(420px, 1.35fr) minmax(110px, .42fr);
-  align-items: center;
-  gap: 22px;
-  // Luminous Harmonic: 左右 padding 与 .main 的 44px 对齐（竖直参考线一致）
-  padding: 10px 44px 14px;
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  gap: 6px;
+  // Luminous Harmonic: 进度条横跨软件宽度, 时间标签贴两端
+  padding: 8px 24px 12px;
   position: relative;
   z-index: 2;
   background: transparent;
@@ -75,45 +76,73 @@ const {
   --wave-progress-glow: color-mix(in srgb, var(--detail-accent-bright, var(--detail-accent-color, var(--color-primary))) 55%, transparent);
 }
 
-.footerTools,
-.playCore,
-.footerStatus {
+// Luminous Harmonic: 进度条行 — 时间标签 + 进度条, 整行横跨
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
-.footerTools {
+.progressContainer {
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+  // 与波浪进度条等高（wave 高 24px）
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.progress { height: 100%; }
+
+.timeLabel {
+  flex: none;
+  // 中性高对比文字色；封面取色模式近白 + 深阴影，主题模式回退主题文字色无阴影（清晰不模糊）
+  color: var(--detail-font-bright, var(--color-font-label));
+  font-size: 11px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-shadow: var(--detail-font-shadow, none);
+}
+
+// Luminous Harmonic: 控制行 — 播放控制绝对居中, 功能按钮分居两侧 (flex 1:1 对称夹持)
+.controlRow {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.sideTools {
+  flex: 1 1 0;
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  overflow: hidden;
+  min-width: 0;
   opacity: .78;
   transition: opacity .35s ease;
   &:hover { opacity: 1; }
 }
 
-.playCore {
-  display: flex;
-  flex-flow: column nowrap;
-  align-items: stretch;
-  justify-content: center;
-  min-width: 0;
-  gap: 5px;
-}
-
-// Luminous Harmonic: 时间标签行 — 进度条上方两端对齐（Pure-music 布局）
-.timeRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  line-height: 1;
+.sideRight {
+  justify-content: flex-end;
+  overflow: hidden;
 }
 
 .playControl {
+  flex: none;
   display: flex;
-  height: 30px;
+  height: 42px;
   align-items: center;
   justify-content: center;
   gap: 14px;
+  // Luminous Harmonic: 控制排 hover 渐显降噪（Pure-music _AutoHidingControlBar 思路）—
+  // 上一首/下一首非悬停时 0.35 透明度，播放键常显；悬停 .playControl 或键盘聚焦时全部浮现
+  &:not(:hover):not(:focus-within) {
+    .playBtn { opacity: .35; }
+    .mainPlayBtn { opacity: 1; }
+  }
 }
 
 .playBtn {
@@ -125,7 +154,7 @@ const {
   justify-content: center;
   padding: 5px;
   border-radius: 50%;
-  // 借鉴 Pure-music Monet: 功能按钮图标随封面强调色变化（亮化版），深阴影保证清晰
+  // 借鉴 Pure-music Monet: 功能按钮图标随封面强调色变化（亮化版）
   color: var(--detail-accent-bright, var(--color-font));
   cursor: pointer;
   text-shadow: var(--detail-font-shadow, 0 1px 3px rgb(0 0 0 / .7));
@@ -139,20 +168,12 @@ const {
   &:active { transform: scale(.94); }
 }
 
-// Luminous Harmonic: 控制排 hover 渐显降噪（Pure-music _AutoHidingControlBar 思路）—
-// 上一首/下一首非悬停时 0.35 透明度，播放键常显；悬停 .playCore 或键盘聚焦时全部浮现
-.playControl:not(:hover):not(:focus-within) {
-  .playBtn { opacity: .35; }
-  .mainPlayBtn { opacity: 1; }
-}
-
 .mainPlayBtn {
   width: 42px;
   height: 42px;
   padding: 11px;
   // 强调色上的文字用亮度对比色（Pure-music: luminance>阈值用黑, 否则白）
   color: var(--detail-on-accent, var(--color-on-primary, var(--color-primary-font)));
-  // 压暗版 accent 作背景（强调），保证图标对比清晰
   // Luminous Harmonic: 播放按钮跟随「功能组件颜色」(--detail-accent-bright) — 与其他组件同源
   background: linear-gradient(150deg, color-mix(in srgb, var(--detail-accent-bright, var(--color-primary)) 72%, black), var(--detail-accent-bright, var(--color-primary)));
   box-shadow: 0 4px 16px color-mix(in srgb, var(--color-app-background) 42%, transparent), 0 0 0 1px rgb(255 255 255 / .14);
@@ -187,34 +208,6 @@ const {
   :global(.icon-play) { opacity: 0; transform: scale(.5) rotate(24deg); }
 }
 
-.progressContainer {
-  position: relative;
-  min-width: 0;
-  // 与波浪进度条等高（wave 高 24px），整行铺满 playCore 宽度
-  height: 24px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-}
-
-.progress { height: 100%; }
-
-.timeLabel {
-  // 中性高对比文字色；封面取色模式近白 + 深阴影，主题模式回退主题文字色无阴影（清晰不模糊）
-  color: var(--detail-font-bright, var(--color-font-label));
-  font-size: 11px;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  text-shadow: var(--detail-font-shadow, none);
-}
-
-.footerStatus {
-  display: flex;
-  justify-content: flex-end;
-  min-width: 0;
-}
-
 .status {
   max-width: 100%;
   overflow: hidden;
@@ -226,20 +219,15 @@ const {
   text-shadow: var(--detail-font-shadow, none);
 }
 
-@media (max-width: 1000px) {
-  .footer { grid-template-columns: minmax(220px, 1fr) minmax(360px, 1.45fr) 70px; gap: 12px; padding-left: 20px; padding-right: 20px; }
-}
-
-@media (max-width: 760px) {
-  .footer { grid-template-columns: 1fr; grid-template-rows: 26px 1fr; flex-basis: 112px; gap: 4px; padding: 8px 16px 12px; }
-  .footerTools { grid-row: 2; justify-content: center; }
-  .playCore { grid-row: 1; }
-  .footerStatus { display: none; }
+@media (max-width: 900px) {
+  .footer { padding: 6px 16px 10px; }
+  .sideTools { opacity: .6; }
+  .playControl { gap: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .footer,
-  .footerTools,
+  .sideTools,
   .playBtn { transition: none; }
 }
 </style>
