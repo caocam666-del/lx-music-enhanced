@@ -33,25 +33,6 @@
     <layout-sync-mode-modal />
     <layout-sync-auth-code-modal />
     <layout-play-detail />
-    <!--
-      Luminous Harmonic: 浮动"主界面"置顶按钮 — Teleport 挂到 body 级别,
-      彻底脱离 #container/.view 的 stacking context.
-      仅在播放详情页打开时显示 (它是详情页卡死时的兜底逃生口, 主界面常驻反而遮挡列表内容);
-      z-index 10002: 压过 Tips/Modal 即可, 不再顶到 2147483647.
-      关键: 这个 Teleport 必须待在 App.vue (根组件, 永远不卸载) 里, 不能塞进会随路由
-      切换而卸载的 View.vue — 否则 View.vue 卸载时, Teleport 子节点走
-      unmountChildren → unmountComponent 会因 type 为 null 崩溃
-      "Cannot read properties of null (reading 'type')". App.vue 不随路由卸载, 所以安全.
-      注意: App.vue 的 <style> 是全局 (非 module), 因此这里用普通 class="backHome".
-    -->
-    <Teleport to="body">
-      <button v-if="isShowPlayerDetail" class="backHome" :aria-label="$t('back_home')" :title="$t('back_home')" @click="goHome">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path d="M12 3l9 8h-3v9h-5v-6H10v6H5v-9H2l10-8z" fill="currentColor" />
-        </svg>
-        <span>{{ $t('back_home') }}</span>
-      </button>
-    </Teleport>
   </div>
 </template>
 
@@ -64,7 +45,6 @@ import { appSetting } from '@renderer/store/setting'
 import { applyWallpaper, restoreWallpaperEngine } from '@renderer/utils/wallpaper'
 import { applyVisualPreferences } from '@renderer/utils/visualPreferences'
 import { isShowPlayerDetail } from '@renderer/store/player/state'
-import { setShowPlayerDetail } from '@renderer/store/player/action'
 import { restartApp } from '@renderer/utils/ipc'
 // Luminous Harmonic: 启动时恢复上次的 Wallpaper Engine 壁纸
 onMounted(() => {
@@ -78,13 +58,6 @@ useApp()
 applyVisualPreferences()
 
 const router = useRouter()
-
-// 兜底"返回主界面": Home/F5 之外, 浮动按钮也走这里 (View.vue 路由切换时会卸载,
-// 所以 Teleport 按钮已迁到本文件, 本函数提供给它调用)
-const goHome = () => {
-  setShowPlayerDetail(false)
-  void router.push('/search')
-}
 
 // Luminous Harmonic: 兜底快捷键 - Home 键强制回到主界面
 // 注意: F5 这里**绝不拦截**(不再 preventDefault), 保留浏览器原生"整页刷新".
@@ -273,41 +246,6 @@ html.lx-maximized.transparent {
   min-height: 0;
 }
 
-// Luminous Harmonic: 浮动"返回主界面"按钮 (兜底: 视图区空白 / HMR 渲染失败 / PlayDetail 全屏卡死)
-// 普通全局 class (App.vue <style> 非 module). 挂到 body (Teleport), z-index 顶到最高压过洛雪所有内置界面.
-// right/bottom 定位 — 浮在播放栏胶囊右上方一点, 不遮挡内容.
-.backHome {
-  position: fixed;
-  right: 16px;
-  bottom: 100px; // 播放栏容器 84px + 8px margin ≈ 92, 再往上留 8px 空隙
-  // Luminous Harmonic: 压过 Tips(10001)/Modal(100) 即可, 不再顶到 int32 最大值
-  z-index: 10002;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px 0 10px;
-  border: 1px solid var(--glass-stroke-strong, rgba(255, 255, 255, 0.12));
-  border-radius: 999px;
-  background-color: color-mix(in srgb, var(--glass-surface-strong, var(--color-content-background)) calc(var(--glass-alpha, .8) * 100%), transparent);
-  color: var(--color-font);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(var(--glass-blur-strong, 24px)) saturate(1.4);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong, 24px)) saturate(1.4);
-  transition: background-color @transition-fast, transform @transition-fast, color @transition-fast;
-  user-select: none;
-
-  svg { fill: currentColor; }
-  &:hover {
-    background-color: var(--color-primary-light-300-alpha-700);
-    color: var(--color-primary);
-    transform: translateY(-1px);
-  }
-  &:active { transform: translateY(0); }
-}
 
 .view-container {
   transition: opacity @transition-normal;

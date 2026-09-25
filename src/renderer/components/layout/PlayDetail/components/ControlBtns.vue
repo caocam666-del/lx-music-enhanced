@@ -151,13 +151,24 @@ export default {
     position: relative;
     opacity: .85;
     cursor: pointer;
-    transition: opacity @transition-normal;
+    transition: opacity @transition-normal, transform .18s ease, filter .18s ease, text-shadow .18s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: transparent;
     border: none;
     padding: 0;
+
+    // Luminous Harmonic: 悬停轻微放大 + 发光 — 主题色光晕 (drop-shadow) 包裹图标,
+    // 与播放控制按钮的 hover 语言一致 (Pure-music 悬停反馈)
+    &:hover {
+      opacity: 1;
+      transform: scale(1.18);
+      color: color-mix(in srgb, var(--detail-accent-bright, var(--color-primary)) 82%, white);
+      filter: drop-shadow(0 0 6px color-mix(in srgb, var(--detail-accent-bright, var(--color-primary)) 65%, transparent))
+              drop-shadow(0 0 14px color-mix(in srgb, var(--detail-accent-bright, var(--color-primary)) 35%, transparent));
+    }
+    &:active { transform: scale(1.05); }
 
     // Luminous Harmonic: 用透明伪元素把命中区外扩 5px（视觉布局不变，符合 44px 可点击标准的折中）
     &::before {

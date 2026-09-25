@@ -4,6 +4,9 @@
     <div :class="$style.progressRow">
       <span :class="$style.timeLabel">{{ nowPlayTimeStr }}</span>
       <div :class="$style.progressContainer">
+        <transition enter-active-class="animated fadeIn" leave-active-class="animated fadeOut">
+          <span v-if="status" :class="$style.getStatus">{{ status }}</span>
+        </transition>
         <common-progress-bar
           :class-name="$style.progress"
           :progress="progress"
@@ -35,7 +38,6 @@
       </div>
       <div :class="[$style.sideTools, $style.sideRight]">
         <control-btns part="right" />
-        <span :class="$style.status">{{ status }}</span>
       </div>
     </div>
   </div>
@@ -96,6 +98,21 @@ const {
 }
 
 .progress { height: 100%; }
+
+// Luminous Harmonic: 「歌曲链接获取中」等状态提示 — 浮在进度条尾端上方,
+// 不再挤占右侧功能按钮空间 (此前会把按钮顶出视野)
+.getStatus {
+  position: absolute;
+  right: 0;
+  bottom: 26px;
+  color: var(--detail-font-bright, var(--color-font-label));
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: .9;
+  text-shadow: var(--detail-font-shadow, none);
+  pointer-events: none;
+}
 
 .timeLabel {
   flex: none;
