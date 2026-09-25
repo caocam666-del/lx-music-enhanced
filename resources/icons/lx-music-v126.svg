@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    Luminous Harmonic 应用图标 (任务栏/托盘):
+    透明背景 · 无填充色块 · 圆头描边简笔双音符戴着头戴式耳机 (音符在听音乐)
+    与侧栏内简笔音符 logo 同一设计语言, 主题蓝 #5b8def
+  -->
+  <g fill="none" stroke="#5b8def" stroke-width="60" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 头戴式耳机: 头梁弧线 (在音符上方) + 两个圆角耳罩垂到音符两侧 -->
+    <path d="M 240 430 A 272 272 0 0 1 784 430" />
+    <rect x="178" y="400" width="124" height="180" rx="56" />
+    <rect x="722" y="400" width="124" height="180" rx="56" />
+
+    <!-- 音符 (居中, 在耳罩之间"听歌"): 连杆与两条符干 -->
+    <path d="M400 660 V 480 Q 400 460 421 455 L 610 413 Q 640 406 640 438 V 580" />
+    <!-- 两个符头: 圆润椭圆 -->
+    <ellipse cx="334" cy="668" rx="60" ry="48" transform="rotate(-14 334 668)" />
+    <ellipse cx="578" cy="608" rx="60" ry="48" transform="rotate(-14 578 608)" />
+  </g>
+</svg>
