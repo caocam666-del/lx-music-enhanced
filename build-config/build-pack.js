@@ -57,6 +57,10 @@ const options = {
   },
   extraResources: [
     './licenses',
+    // 自动更新配置：electron-builder 只在 --publish 模式下才生成 app-update.yml，
+    // 本地出包时缺失会导致 electron-updater 直接报 ENOENT、检查更新永久失败。
+    // 这里显式打进 resources/，保证安装版与便携版都带自动更新能力。
+    { from: './build-config/app-update.yml', to: 'app-update.yml' },
   ],
   publish: [
     {
