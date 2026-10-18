@@ -27,6 +27,7 @@ window.lx = {
   isProd: process.env.NODE_ENV == 'production',
   rootOffset: window.dt ? 0 : 8,
   apiInitPromise: [Promise.resolve(false), true, () => {}],
+  urlExhaustedId: null,
 }
 
 window.lxData = {}

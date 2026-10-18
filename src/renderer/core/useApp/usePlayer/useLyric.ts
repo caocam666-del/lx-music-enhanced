@@ -9,11 +9,12 @@ import {
   stop,
   init,
   sendInfo,
+  refreshCoverColors,
   setPlaybackRate,
   syncPlayPosition,
 } from '@renderer/core/lyric'
 import { appSetting } from '@renderer/store/setting'
-import { isPlay } from '@renderer/store/player/state'
+import { isPlay, musicInfo } from '@renderer/store/player/state'
 
 const handleApplyPlaybackRate = debounce(setPlaybackRate, 300)
 
@@ -25,6 +26,8 @@ export default () => {
   const setPlayInfo = () => {
     stop()
     sendInfo()
+    // 换歌即刷新封面取色（不依赖用户是否打开过详情页）
+    void refreshCoverColors()
   }
 
   // Luminous Harmonic: 播放真正开始时(而非切歌瞬间)同步歌词 — 自动切歌时

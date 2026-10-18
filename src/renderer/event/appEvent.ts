@@ -79,8 +79,12 @@ export class AppEvent extends Event {
     this.emit('stop')
   }
 
-  error(code?: number) {
-    this.emit('error', code)
+  /**
+   * @param code 播放器媒体错误码（仅音频错误时有意义）
+   * @param kind 错误分级（见 utils/message 的 PLAY_ERROR），用于决定是否计入连续失败
+   */
+  error(code?: number, kind?: string) {
+    this.emit('error', code, kind)
   }
 
   // 播放器原始事件

@@ -21,6 +21,25 @@ export const setWindowBounds = (bounds: LX.DesktopLyric.NewBounds) => {
 export const setTaskbarMenuVisible = (visible: boolean) => {
   rendererSend<boolean>(WIN_LYRIC_RENDERER_EVENT_NAME.set_taskbar_menu_visible, visible)
 }
+/** Luminous Harmonic: 请求主进程把灵动岛复位到停靠位置（可指定停靠边，并按当前展开态取尺寸） */
+export const resetIslandPosition = (opts?: { dock?: string, expanded?: boolean }) => {
+  rendererSend(WIN_LYRIC_RENDERER_EVENT_NAME.reset_island_position, opts)
+}
+/** Luminous Harmonic: 请求主进程切换灵动岛尺寸（展开/收起） */
+export const setIslandExpanded = (expanded: boolean) => {
+  rendererSend<boolean>(WIN_LYRIC_RENDERER_EVENT_NAME.set_island_expanded, expanded)
+}
+/** 上报胶囊内容实测宽度：主进程据此自适应收窄窗口（保证一行歌词完整且右侧不留白） */
+export const setIslandContentWidth = (width: number) => {
+  rendererSend<number>(WIN_LYRIC_RENDERER_EVENT_NAME.set_island_content_width, width)
+}
+/** Luminous Harmonic: 主进程轮询判定光标已移出岛范围时通知（用于收起） */
+export const onIslandCursorLeave = (listener: LX.IpcRendererEventListener): RemoveListener => {
+  rendererOn(WIN_LYRIC_RENDERER_EVENT_NAME.island_cursor_leave, listener)
+  return () => {
+    rendererOff(WIN_LYRIC_RENDERER_EVENT_NAME.island_cursor_leave, listener)
+  }
+}
 let previousResizable: boolean | null = null
 export const setWindowResizeable = (resizable: boolean) => {
   if (previousResizable === resizable) return

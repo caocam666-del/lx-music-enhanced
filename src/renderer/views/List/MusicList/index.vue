@@ -106,6 +106,12 @@
     <div v-show="!displayList.length" :class="$style.noItem">
       <p v-text="$t('no_item')" />
     </div>
+    <!-- Luminous Harmonic: 批量操作条（选中后从底部滑出） -->
+    <common-batch-action-bar
+      :count="selectedList.length"
+      @clear="removeAllSelect"
+      @action="handleBatchAction"
+    />
     <common-list-add-modal
       v-model:show="isShowListAdd" :is-move="isMove" :from-list-id="listId"
       :music-info="selectedAddMusicInfo" :exclude-list-id="excludeListIds" teleport="#view"
@@ -147,6 +153,9 @@ import { appSetting } from '@renderer/store/setting'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { isPlay } from '@renderer/store/player/state' // eslint-disable-line
 import { togglePlay } from '@renderer/core/player/action'
+import { addListMusics } from '@renderer/store/list/action'
+import { loveList } from '@renderer/store/list/state'
+import { dialog } from '@renderer/plugins/Dialog'
 export default {
   name: 'MusicList',
   directives: {
@@ -258,6 +267,24 @@ export default {
       selectedDownloadMusicInfo,
       handleShowDownloadModal,
     } = useMusicDownload({ selectedList, list })
+
+    // Luminous Harmonic: 批量操作条 — 统一入口
+    const handleBatchCollect = async() => {
+      if (!selectedList.value.length) return
+      const num = selectedList.value.length
+      await addListMusics(loveList.id, [...selectedList.value])
+      removeAllSelect()
+      void dialog(window.i18n.t('batch__collect_done', { num }))
+    }
+    const handleBatchAction = (id) => {
+      if (!selectedList.value.length) return
+      switch (id) {
+        case 'play-later': handlePlayMusicLater(0, false); break
+        case 'add-to': isShowListAddMultiple.value = true; break
+        case 'collect': void handleBatchCollect(); break
+        case 'download': isShowDownloadMultiple.value = true; break
+      }
+    }
 
     const {
       isShowMusicSortModal,
@@ -397,6 +424,10 @@ export default {
       isShowListAddMultiple,
       isMoveMultiple,
       selectedAddMusicInfo,
+
+      // Luminous Harmonic: 批量操作条
+      handlePlayMusicLater,
+      handleBatchAction,
 
       isShowMusicSortModal,
       selectedNum,

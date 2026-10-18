@@ -29,6 +29,11 @@ interface Lx {
   }
   rootOffset: number
   apiInitPromise: [Promise<boolean>, boolean, (success: boolean) => void]
+  /**
+   * Luminous Harmonic: 取 URL 阶段已判定「本首歌放不了」的歌曲 id。
+   * setMusicUrl 失败路径写入，usePlayEvent.handleError 读取后按 fatalUrl 上报。
+   */
+  urlExhaustedId: string | null
 }
 
 declare global {
@@ -45,6 +50,9 @@ declare global {
 
     setTheme: (colors: Record<string, string>) => void
     setLang: (lang?: string) => void
+
+    /** 调试句柄：播放器的音频元素（new Audio() 创建，不在 DOM 中，供本地验证脚本使用） */
+    __lxAudio?: HTMLAudioElement
   }
 
   module NodeJS {

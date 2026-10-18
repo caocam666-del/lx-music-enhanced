@@ -11,11 +11,87 @@ import { appSetting } from '@renderer/store/setting'
 import { langS2T, toNewMusicInfo, toOldMusicInfo } from '@renderer/utils'
 import { requestMsg } from '@renderer/utils/message'
 import { apis } from '@renderer/utils/musicSdk/api-source'
-
+import { recordAttempt } from '@renderer/core/player/diagnosis'
 
 const getOtherSourcePromises = new Map()
 const otherSourceCache = new Map<LX.Music.MusicInfo | LX.Download.ListItem, LX.Music.MusicInfoOnline[]>()
 export const existTimeExp = /\[\d{1,2}:.*\d{1,4}\]/
+
+// ============================ 换源时限与错误分级 ============================
+/**
+ * 单音源尝试时限（毫秒）。
+ * 底层 httpFetch 的默认超时是 15000ms — 那是「一次请求」的上限, 不是「一个音源」的上限:
+ * 一个音源的 getMusicUrl 可能内部串联多次请求（如 wy 先试账号接口再试代理接口）,
+ * 因此这里再包一层, 保证换源时单个音源绝不会拖住整条链路。
+ */
+export const getSourceTimeout = () => Math.max(2000, (appSetting['player.sourceSwitch.sourceTimeout'] ?? 6) * 1000)
+/** 纯缓存查询时限（毫秒）— 缓存命中是即时的, 超过这个时间说明缓存层异常, 直接放过 */
+export const CACHE_LOOKUP_TIMEOUT = 300
+/** 整个换源阶段的总时限（毫秒）— 到点即止损, 不再等后面的音源 */
+export const getSwitchBudget = () => Math.max(5000, (appSetting['player.sourceSwitch.totalBudget'] ?? 18) * 1000)
+
+/** 错误消息：说明该错误不应计入「连续播放失败」次数（重试即可, 不是歌曲本身的问题） */
+export const NON_FATAL_MESSAGES: ReadonlySet<string> = new Set([
+  requestMsg.tooManyRequests,
+  requestMsg.cancelRequest,
+  requestMsg.notConnectNetwork,
+  requestMsg.timeout,
+])
+
+/** 该错误是否属于「非致命」（服务器繁忙/断网/超时/主动取消） */
+export const isNonFatalError = (err: unknown): boolean => {
+  const message = err instanceof Error ? err.message : String(err ?? '')
+  for (const item of NON_FATAL_MESSAGES) {
+    if (message.includes(item)) return true
+  }
+  return false
+}
+
+/**
+ * 给 Promise 套一层超时。超时后以「该音源超时」拒绝, 调用方即可换下一个音源。
+ * 注意：底层请求无法真正中断（needle 已在飞行中）, 这里只是不再等待它 —
+ * 这正是换源场景需要的语义（不等 = 立刻试下一个源）。
+ */
+export const withTimeout = <T>(promise: Promise<T>, ms: number, label?: string): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      reject(new Error(`${requestMsg.timeout}${label ? `(${label})` : ''}`))
+    }, ms)
+    promise.then((val) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(val)
+    }).catch((err: unknown) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      reject(err)
+    })
+  })
+}
+
+export interface SourceDeadline {
+  /** 剩余预算（毫秒），已耗尽时为 0 */
+  remaining: () => number
+  /** 本次尝试可用的时限 = min(单源时限, 剩余预算) */
+  slice: () => number
+  expired: () => boolean
+}
+
+/** 创建换源总预算计时器 */
+export const createSourceDeadline = (budget = getSwitchBudget()): SourceDeadline => {
+  const endAt = Date.now() + budget
+  const remaining = () => Math.max(0, endAt - Date.now())
+  return {
+    remaining,
+    slice: () => Math.min(getSourceTimeout(), remaining()),
+    expired: () => remaining() <= 0,
+  }
+}
 
 // Luminous Harmonic: 换源匹配结果持久化 — 导入源(如汽水)的歌曲每次播放都要全源搜索
 // (最多 15s), 匹配成功后写入 localStorage, 重启后直接命中, 省去整次搜索
@@ -263,12 +339,14 @@ export const getPlayQuality = (highQuality: LX.Quality, musicInfo: LX.Music.Musi
   return type
 }
 
-export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggleSource, isRefresh, retryedSource = [] }: {
+export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggleSource, isRefresh, retryedSource = [], deadline }: {
   musicInfos: LX.Music.MusicInfoOnline[]
   quality?: LX.Quality
   onToggleSource: (musicInfo?: LX.Music.MusicInfoOnline) => void
   isRefresh: boolean
   retryedSource?: LX.OnlineSource[]
+  /** 换源总预算；不传则新建一个。递归尝试下一个音源时沿用同一个 deadline */
+  deadline?: SourceDeadline
 }): Promise<{
   url: string
   musicInfo: LX.Music.MusicInfoOnline
@@ -276,6 +354,8 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
   isFromCache: boolean
 }> => {
   if (!await window.lx.apiInitPromise[0]) throw new Error('source init failed')
+
+  const dl = deadline ?? createSourceDeadline()
 
   let musicInfo: LX.Music.MusicInfoOnline | null = null
   let itemQuality: LX.Quality | null = null
@@ -291,7 +371,10 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
     onToggleSource(musicInfo)
     break
   }
-  if (!musicInfo || !itemQuality) throw new Error(window.i18n.t('toggle_source_failed'))
+  if (!musicInfo || !itemQuality) throw new Error(requestMsg.sourceExhausted)
+
+  // 换源总预算已耗尽：直接止损, 不再为后面的音源等待
+  if (dl.expired()) throw new Error(requestMsg.sourceExhausted)
 
   // Luminous Harmonic: 先一次性扫描全部候选的 URL 缓存 — 原逻辑只看第一个候选的
   // 缓存, 会错过排在后面但已有现成缓存 URL 的候选 (缓存命中是即时的, 省一次网络探测)
@@ -300,16 +383,20 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
       if (retryedSource.includes(candidate.source) || !assertApiSupport(candidate.source)) continue
       const candidateQuality = quality ?? getPlayQuality(appSetting['player.playQuality'], candidate)
       if (!candidate.meta._qualitys[candidateQuality]) continue
-      // eslint-disable-next-line no-await-in-loop
-      const cachedUrl = await getStoreMusicUrl(candidate, candidateQuality)
+      // 缓存查询也给时限：缓存层异常时不能拖住换源
+      const cacheStart = Date.now()
+      const cachedUrl = await withTimeout(
+        getStoreMusicUrl(candidate, candidateQuality), CACHE_LOOKUP_TIMEOUT).catch(() => null)
       if (cachedUrl) {
         onToggleSource(candidate)
+        recordAttempt({ source: candidate.source, result: 'cache', ms: Date.now() - cacheStart, quality: candidateQuality })
         return { url: cachedUrl, musicInfo: candidate, quality: candidateQuality, isFromCache: true }
       }
     }
   }
 
-  const cachedUrl = await getStoreMusicUrl(musicInfo, itemQuality)
+  const cachedUrl = await withTimeout(
+    getStoreMusicUrl(musicInfo, itemQuality), CACHE_LOOKUP_TIMEOUT).catch(() => null)
   if (cachedUrl && !isRefresh) return { url: cachedUrl, musicInfo, quality: itemQuality, isFromCache: true }
 
   let reqPromise
@@ -318,16 +405,37 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
   } catch (err: any) {
     reqPromise = Promise.reject(err)
   }
-  // retryedSource.includes(musicInfo.source)
+  // 单音源时限 = min(单源超时, 剩余总预算)：一个源绝不会拖住整条换源链路
+  const slice = dl.slice()
+  const attemptStart = Date.now()
   // eslint-disable-next-line @typescript-eslint/promise-function-async
-  return reqPromise.then(({ url, type }: { url: string, type: LX.Quality }) => {
-    return { musicInfo, url, quality: type, isFromCache: false }
+  return withTimeout<{ url: string, type: LX.Quality }>(reqPromise, slice, musicInfo.source)
+    .then(({ url, type }) => {
+      recordAttempt({
+        source: musicInfo!.source,
+        result: 'ok',
+        ms: Date.now() - attemptStart,
+        limit: slice,
+        quality: type,
+      })
+      return { musicInfo, url, quality: type, isFromCache: false }
     // eslint-disable-next-line @typescript-eslint/promise-function-async
-  }).catch((err: any) => {
-    if (err.message == requestMsg.tooManyRequests) throw err
-    console.log(err)
-    return getOnlineOtherSourceMusicUrl({ musicInfos, quality, onToggleSource, isRefresh, retryedSource })
-  })
+    }).catch((err: any) => {
+      // 服务器繁忙：不计入换源失败, 交由上层做延时重试（继续换源只会同样繁忙）
+      if (err?.message == requestMsg.tooManyRequests) throw err
+      const ms = Date.now() - attemptStart
+      const isTimeout = typeof err?.message == 'string' && err.message.includes(requestMsg.timeout)
+      recordAttempt({
+        source: musicInfo!.source,
+        result: isTimeout ? 'timeout' : 'fail',
+        ms,
+        limit: slice,
+        message: err?.message,
+      })
+      console.log(`[换源] ${musicInfo!.source} 失败(${slice}ms 时限):`, err?.message)
+      if (dl.expired()) throw new Error(requestMsg.sourceExhausted)
+      return getOnlineOtherSourceMusicUrl({ musicInfos, quality, onToggleSource, isRefresh, retryedSource, deadline: dl })
+    })
 }
 
 /**
@@ -355,27 +463,32 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
   } catch (err: any) {
     reqPromise = Promise.reject(err)
   }
-  return reqPromise.then(({ url, type }: { url: string, type: LX.Quality }) => {
-    return { musicInfo, url, quality: type, isFromCache: false }
-  }).catch(async(err: any) => {
-    console.log(err)
-    if (!allowToggleSource || err.message == requestMsg.tooManyRequests) throw err
-    onToggleSource()
-    // eslint-disable-next-line @typescript-eslint/promise-function-async
-    return getOtherSource(musicInfo).then(otherSource => {
-      console.log('find otherSource', otherSource)
-      if (otherSource.length) {
-        return getOnlineOtherSourceMusicUrl({
-          musicInfos: [...otherSource],
-          onToggleSource,
-          quality,
-          isRefresh,
-          retryedSource: [musicInfo.source],
-        })
-      }
-      throw err
+  // 首个音源（当前播放源）同样受单源时限保护 — 它卡住时立刻进入换源, 不干等
+  return withTimeout<{ url: string, type: LX.Quality }>(reqPromise, getSourceTimeout(), musicInfo.source)
+    .then(({ url, type }) => {
+      return { musicInfo, url, quality: type, isFromCache: false }
+    }).catch(async(err: any) => {
+      console.log(err)
+      if (!allowToggleSource || err.message == requestMsg.tooManyRequests) throw err
+      onToggleSource()
+      // 换源总预算覆盖「找候选」+「逐个试候选」全过程
+      const deadline = createSourceDeadline()
+      // eslint-disable-next-line @typescript-eslint/promise-function-async
+      return withTimeout(getOtherSource(musicInfo), deadline.remaining(), 'findOtherSource').then(otherSource => {
+        console.log('find otherSource', otherSource)
+        if (otherSource.length) {
+          return getOnlineOtherSourceMusicUrl({
+            musicInfos: [...otherSource],
+            onToggleSource,
+            quality,
+            isRefresh,
+            retryedSource: [musicInfo.source],
+            deadline,
+          })
+        }
+        throw err
+      })
     })
-  })
 }
 
 

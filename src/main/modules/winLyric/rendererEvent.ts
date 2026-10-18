@@ -3,7 +3,7 @@ import { mainOn, mainHandle } from '@common/mainIpc'
 import { WIN_LYRIC_RENDERER_EVENT_NAME } from '@common/ipcNames'
 import { buildLyricConfig, getLyricWindowBounds } from './utils'
 import { sendNewDesktopLyricClient } from '@main/modules/winMain'
-import { getBounds, getMainFrame, sendEvent, setBounds, setResizeable, setTaskbarMenuVisible } from './main'
+import { getBounds, getMainFrame, sendEvent, setBounds, setResizeable, setTaskbarMenuVisible, resetIslandPosition, setIslandExpanded, setIslandContentWidth } from './main'
 import { MessageChannelMain } from 'electron'
 import { mouseCheckTools } from './mouseCheckTools'
 
@@ -36,6 +36,22 @@ export default () => {
 
   mainOn<boolean>(WIN_LYRIC_RENDERER_EVENT_NAME.set_taskbar_menu_visible, ({ params: visible }) => {
     setTaskbarMenuVisible(visible)
+  })
+
+  // Luminous Harmonic: 灵动岛复位位置（右键菜单触发；多屏插拔后也靠它兜底）
+  // 可选带上 dock / expanded：切换停靠边时若正处于展开态，需要按展开尺寸重新落位
+  mainOn<{ dock?: string, expanded?: boolean } | undefined>(WIN_LYRIC_RENDERER_EVENT_NAME.reset_island_position, ({ params }) => {
+    resetIslandPosition(params ?? undefined)
+  })
+
+  // Luminous Harmonic: 灵动岛展开/收起（渲染层悬停或点击时请求切换窗口尺寸）
+  mainOn<boolean>(WIN_LYRIC_RENDERER_EVENT_NAME.set_island_expanded, ({ params: expanded }) => {
+    setIslandExpanded(!!expanded)
+  })
+
+  // 渲染层上报胶囊内容实测宽度 → 收起态窗口自适应收窄（避免固定宽度留白/截断）
+  mainOn<number>(WIN_LYRIC_RENDERER_EVENT_NAME.set_island_content_width, ({ params: width }) => {
+    setIslandContentWidth(Number(width))
   })
 
   mainOn(WIN_LYRIC_RENDERER_EVENT_NAME.request_main_window_channel, ({ event }) => {

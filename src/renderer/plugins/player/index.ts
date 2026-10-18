@@ -91,6 +91,9 @@ export const createAudio = () => {
   audio.autoplay = true
   audio.preload = 'auto'
   audio.crossOrigin = 'anonymous'
+  // 调试句柄：音频元素是 new Audio() 创建的、不在 DOM 里，
+  // 外部工具（CDP 验证脚本）无法用 querySelector 拿到它。仅用于本地验证。
+  window.__lxAudio = audio
 
   // https://developer.chrome.com/blog/autoplay
   listenAudio('playing', () => {
@@ -796,6 +799,19 @@ const initSongTransition = () => {
 
 export const getSongTransitionMode = (): SongTransitionMode => transitionState.mode
 
+/**
+ * 最近一次「更换/清空音源」的时间戳。
+ *
+ * 为什么要它：替换 src（或 setStop 清空 src）时，Chromium 会对旧资源抛出一次
+ * 瞬时的 error 事件（此时 audio.error 往往是 null 或 MEDIA_ERR_SRC_NOT_SUPPORTED）。
+ * 上层把它当成"这首歌唱不了"就会在几百毫秒后自动切下一首 ——
+ * 双击同一首歌（两次 src 变更）时尤其容易触发，表现为"点了就跳到下一首"。
+ * 这里记录时间点，让错误处理忽略这段"换源抖动期"内的 error。
+ */
+let lastResourceChangeAt = 0
+
+export const getMsSinceResourceChange = () => Date.now() - lastResourceChangeAt
+
 export const setResource = (src: string) => {
   if (!audio) return
   // 交叉淡化进行中且换入的正是影子元素已在播的流 → 直接交换角色 (无缝接管, 不重新加载)
@@ -816,11 +832,22 @@ export const setResource = (src: string) => {
   }
   cancelTransition(true)
   transitionState.fadeInNext = keepFadeIn
+  lastResourceChangeAt = Date.now()
   audio.src = src
 }
 
 export const setPlay = () => {
-  void audio?.play()
+  const promise = audio?.play()
+  if (!promise || typeof promise.catch != 'function') return
+  promise.catch((err: any) => {
+    /**
+     * AbortError：play() 被新的 load/src 变更打断（双击同一首、快速切歌）
+     * NotAllowedError：浏览器自动播放策略拦截
+     * 两者都**不是**"这首歌唱不了"，不能触发换源 / 自动切歌。
+     */
+    if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return
+    console.warn('play() rejected:', err)
+  })
 }
 
 export const setPause = () => {
@@ -832,6 +859,7 @@ export const setStop = () => {
   // 不让行会把新歌杀掉 (随后 setResource 重新加载 → 新歌从头播放)
   if (transitionState.promotedViaTransition) return
   if (audio) {
+    lastResourceChangeAt = Date.now()
     audio.src = ''
     audio.removeAttribute('src')
   }

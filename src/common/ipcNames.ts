@@ -195,6 +195,14 @@ const modules = {
     provide_main_window_channel: 'provide_main_window_channel',
     mouse_enter_leave: 'mouse_enter_leave',
     set_taskbar_menu_visible: 'set_taskbar_menu_visible',
+    // Luminous Harmonic: 灵动岛复位位置（右键菜单触发）
+    reset_island_position: 'reset_island_position',
+    // Luminous Harmonic: 灵动岛展开/收起（渲染层请求切换尺寸）
+    set_island_expanded: 'set_island_expanded',
+    // 渲染层上报胶囊内容实测宽度（自适应收窄，避免固定宽度留白/截断）
+    set_island_content_width: 'set_island_content_width',
+    // Luminous Harmonic: 光标已移出灵动岛（主进程轮询判定后通知渲染层收起）
+    island_cursor_leave: 'island_cursor_leave',
   },
   hotKey: {
     enable: 'enable',

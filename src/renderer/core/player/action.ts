@@ -15,8 +15,10 @@ import {
 } from '@renderer/store/player/action'
 import { appSetting } from '@renderer/store/setting'
 import { getMusicUrl, getPicPath, getLyricInfo } from '../music/index'
+import { isNonFatalError } from '../music/utils'
+import { beginDiagnosis, endDiagnosis } from './diagnosis'
 import { filterList } from './utils'
-import { requestMsg } from '@renderer/utils/message'
+import { requestMsg, PLAY_ERROR } from '@renderer/utils/message'
 import { getRandom } from '@renderer/utils/index'
 import { addListMusics, removeListMusics } from '@renderer/store/list/action'
 import { loveList } from '@renderer/store/list/state'
@@ -24,6 +26,8 @@ import { addDislikeInfo } from '@renderer/core/dislikeList'
 // import { checkMusicFileAvailable } from '@renderer/utils/music'
 
 let gettingUrlId = ''
+/** 取 URL 请求代次：用于丢弃"被更新请求取代"的旧异步结果（见 setMusicUrl） */
+let urlRequestSeq = 0
 const createGettingUrlId = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem) => {
   const tInfo = 'progress' in musicInfo ? musicInfo.metadata.musicInfo.meta.toggleMusicInfo : musicInfo.meta.toggleMusicInfo
   return `${musicInfo.id}_${tInfo?.id ?? ''}`
@@ -54,8 +58,10 @@ const createDelayNextTimeout = (delay: number) => {
   }
 }
 const { addDelayNextTimeout, clearDelayNextTimeout } = createDelayNextTimeout(5000)
-// Luminous Harmonic: 取 URL 加载超时从 100s 收紧到 20s — 音源失败后尽快自动切下一首, 避免长时间卡住
+// Luminous Harmonic: 取 URL 加载超时收紧到 20s — 音源失败后尽快自动切下一首, 避免长时间卡住
 const { addDelayNextTimeout: addLoadTimeout, clearDelayNextTimeout: clearLoadTimeout } = createDelayNextTimeout(20000)
+// 连续「非致命」错误（服务器繁忙/断网/超时）的自愈次数上限, 超过就交给跳过判定
+const NON_FATAL_RETRY_LIMIT = 2
 
 /**
  * 检查音乐信息是否已更改
@@ -87,7 +93,7 @@ const delayRetry = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, i
     }
   })
 }
-const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, isRetryed = false): Promise<string | null> => {
+const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, isRetryed = false, nonFatalRetryed = 0): Promise<string | null> => {
   // this.musicInfo.url = await getMusicPlayUrl(targetSong, type)
   setAllStatus(window.i18n.t('player__getting_url'))
   if (appSetting['player.autoSkipOnError']) addLoadTimeout()
@@ -119,9 +125,30 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
       diffCurrentMusicInfo(musicInfo) ||
       err.message == requestMsg.cancelRequest) return null
 
-    if (err.message == requestMsg.tooManyRequests) return delayRetry(musicInfo, isRefresh)
+    // Luminous Harmonic: 换源预算已耗尽 / 所有音源都失败 —— 这是「本首歌确实放不了」,
+    // 直接抛出交给上层按「连续失败」规则跳过, 不再做无意义的延时重试
+    if (err.message == requestMsg.sourceExhausted) throw err
 
-    if (!isRetryed) return getMusicPlayUrl(musicInfo, isRefresh, true)
+    // 服务器繁忙 / 断网 / 单源超时：属于非致命错误, 歌曲本身没问题 → 短延时重试有限次
+    if (isNonFatalError(err) && nonFatalRetryed < NON_FATAL_RETRY_LIMIT) {
+      return delayRetry(musicInfo, isRefresh).then(url => {
+        if (url == null && !window.lx.isPlayedStop && !diffCurrentMusicInfo(musicInfo)) {
+          return getMusicPlayUrl(musicInfo, isRefresh, isRetryed, nonFatalRetryed + 1)
+        }
+        return url
+      // eslint-disable-next-line @typescript-eslint/promise-function-async
+      }).catch((retryErr: any) => {
+        if (window.lx.isPlayedStop || diffCurrentMusicInfo(musicInfo)) return null
+        if (isNonFatalError(retryErr) && nonFatalRetryed + 1 < NON_FATAL_RETRY_LIMIT) {
+          return getMusicPlayUrl(musicInfo, isRefresh, isRetryed, nonFatalRetryed + 1)
+        }
+        throw retryErr
+      })
+    }
+
+    if (isNonFatalError(err)) throw err
+
+    if (!isRetryed) return getMusicPlayUrl(musicInfo, isRefresh, true, nonFatalRetryed)
 
     throw err
   })
@@ -132,6 +159,14 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   if (!force && !diffCurrentMusicInfo(musicInfo)) return
   if (cancelDelayRetry) cancelDelayRetry()
   gettingUrlId = createGettingUrlId(musicInfo)
+  /**
+   * 请求代次：每次取 URL 都 +1。
+   *
+   * 快速连点同一首（双击）/ 连续切歌时，会有多条取 URL 的异步链同时在跑。
+   * 旧链如果比新链晚返回，会把旧 URL 写进播放器 → 打断正在播放的新链 → 触发瞬时 error → 被判为播放失败。
+   * 这里给每条链打上代次，回调里发现"已被更新的一次请求取代"就直接丢弃。
+   */
+  const mySeq = ++urlRequestSeq
   // 切歌过渡(交叉淡化): 上一首歌结尾时已预取好下一首的 URL, 直接使用避免二次解析
   // (二次解析既浪费请求, 也可能拿到不同临时 URL 导致影子元素无法无缝接管)
   if (!isRefresh && preloadedNext && musicInfo.id === preloadedNext.id) {
@@ -143,14 +178,32 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
     return
   }
   preloadedNext = null
+  // Luminous Harmonic: 开始新一轮播放诊断（换源过程会往里记尝试明细）
+  beginDiagnosis(
+    musicInfo.id,
+    'progress' in musicInfo
+      ? `${musicInfo.metadata.musicInfo.name} - ${musicInfo.metadata.musicInfo.singer}`
+      : `${musicInfo.name} - ${musicInfo.singer}`,
+  )
   void getMusicPlayUrl(musicInfo, isRefresh).then((url) => {
+    // 已被更新的一次请求取代 → 丢弃旧结果，不要覆盖当前播放
+    if (mySeq !== urlRequestSeq) return
     if (!url) return
     setResource(url)
+    endDiagnosis('ok', '已取得播放链接')
   }).catch((err: any) => {
+    // 旧请求的失败与当前播放无关，不能触发换源/跳过
+    if (mySeq !== urlRequestSeq) return
     console.log(err)
     setPlayerError(true)
-    setAllStatus(err.message)
-    window.app_event.error()
+    const transient = isNonFatalError(err)
+    if (transient) window.lx.urlExhaustedId = null
+    else window.lx.urlExhaustedId = musicInfo.id
+    // 非致命（服务器繁忙/断网/超时）：只提示, 不计入连续失败
+    // 其余（换源预算耗尽 / 所有音源失败）：fatalUrl → 计入连续失败并按规则跳过
+    window.app_event.error(undefined, transient ? PLAY_ERROR.transient : PLAY_ERROR.fatalUrl)
+    setAllStatus(transient ? err.message : requestMsg.sourceExhausted)
+    endDiagnosis(transient ? 'transient' : 'exhausted', transient ? err.message : requestMsg.sourceExhausted)
     if (appSetting['player.autoSkipOnError']) addDelayNextTimeout()
   }).finally(() => {
     if (musicInfo === playMusicInfo.musicInfo) {

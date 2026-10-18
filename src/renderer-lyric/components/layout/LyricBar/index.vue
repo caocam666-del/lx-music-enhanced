@@ -16,20 +16,27 @@
       <span :class="$style.singer"> · {{ musicInfo.singer }}</span>
     </div>
 
-    <!-- 右：当前行 / 下一行（直接切换, 逐字高亮实时更新） -->
+    <!-- 右：当前行 / 下一行（整列上移一行：旧句滑出、下一句顶上成为当前行） -->
     <div :class="$style.lyricArea">
-      <div :class="[$style.curLine, 'nobreak']">
-        <template v-if="curSegments.length">
-          <span
-            v-for="(segment, index) in curSegments"
-            :key="index"
-            :class="$style.word"
-            :style="{ '--word-progress': segment.progress * 100 + '%' }"
-          >{{ segment.text }}</span>
-        </template>
-        <template v-else>{{ curText }}</template>
+      <div v-if="barRows.length" :class="$style.lrcViewport">
+        <div :class="$style.lrcTrack" :style="trackStyle">
+          <div
+            v-for="row in barRows"
+            :key="row.key"
+            :class="[row.role === 'cur' ? $style.curLine : $style.nextLine, 'nobreak']"
+          >
+            <template v-if="row.segs.length">
+              <span
+                v-for="(segment, index) in row.segs"
+                :key="index"
+                :class="$style.word"
+                :style="{ '--word-progress': segment.progress * 100 + '%' }"
+              >{{ segment.text }}</span>
+            </template>
+            <template v-else>{{ row.text }}</template>
+          </div>
+        </div>
       </div>
-      <div v-if="nextText" :class="[$style.nextLine, 'nobreak']">{{ nextText }}</div>
       <div v-if="!curText && !nextText" :class="$style.emptyLine">{{ musicInfo.id ? '暂无歌词' : '暂无歌曲' }}</div>
     </div>
 
@@ -43,7 +50,7 @@
 </template>
 
 <script>
-import { computed, ref, watch, nextTick } from '@common/utils/vueTools'
+import { computed, ref, watch, nextTick, onBeforeUnmount } from '@common/utils/vueTools'
 import { setting, musicInfo } from '@lyric/store/state'
 import { lyric } from '@lyric/store/lyric'
 import { updateSetting, setTaskbarMenuVisible, setWindowBounds } from '@lyric/utils/ipc'
@@ -86,9 +93,114 @@ export default {
       return lyric.lines[line + 1]?.text ?? ''
     })
 
+    /**
+     * 整列上移一行（与会话里灵动岛用同一套做法）。
+     *
+     * 换行时先把「旧当前行 + 新当前行 + 新下一行」一起渲染，再用 transform
+     * 把整列上移一行：旧句从顶部滑出、下一句顶上来成为当前行、再下一句补在底部。
+     * 动画结束后提交成新窗口并关闭过渡复位（所以看不出接缝）。
+     *
+     * 为什么不用 transition-group：enter 只能让新行自己滑入，旧行是瞬间消失的，
+     * 看不到"被顶上去"的连续动作。
+     */
+    const MARQUEE_MS = 360
+    const barRows = ref([])
+    const barShift = ref(0)
+    const barAnimate = ref(false)
+    let barTimer = 0
+    /** 过渡代次：残留的 rAF/定时器回调看到代次对不上就放弃，避免把旧状态写回去 */
+    let barGen = 0
+
+    /**
+     * live = 这一行是否"实时渲染逐字进度"。
+     *
+     * 关键：逐字进度（curSegments）是每帧变的，而行结构只在换行时重建。
+     * 如果只在换行时把 segments 快照进去，进度就会冻结在那一瞬间
+     * （表现为"只高亮前一两个字就卡住"）。所以给当前行打 live 标记，
+     * 由下面的 watcher 把最新的 segments 就地写进去。
+     * 过渡期间滑出去的那一行不再 live（它属于上一句）。
+     */
+    const buildRows = () => {
+      const line = lyric.line
+      const rows = [{ key: 'c' + line, text: curText.value, segs: curSegments.value, role: 'cur', live: true }]
+      if (nextText.value) rows.push({ key: 'n' + line, text: nextText.value, segs: [], role: 'next', live: false })
+      return rows
+    }
+
+    watch(() => lyric.line, () => {
+      clearTimeout(barTimer)
+      const gen = ++barGen
+      const prev = barRows.value
+      const next = buildRows()
+      if (!next.length) {
+        barRows.value = []
+        barShift.value = 0
+        barAnimate.value = false
+        return
+      }
+      if (!prev.length) {
+        barRows.value = next
+        return
+      }
+      // 过渡：旧当前行留在最上面被顶出（不再 live），其余用新窗口的行
+      barRows.value = [{ ...prev[0], live: false }, ...next]
+      barShift.value = 0
+      barAnimate.value = false
+      // 先提交「起点 + transition」，再下一帧改 transform，浏览器才有插值区间
+      requestAnimationFrame(() => {
+        if (gen !== barGen) return
+        barAnimate.value = true
+        requestAnimationFrame(() => {
+          if (gen !== barGen) return
+          if (!barRows.value.length) return
+          barShift.value = 1
+          barTimer = setTimeout(() => {
+            if (gen !== barGen) return
+            barRows.value = buildRows()
+            barShift.value = 0
+            barAnimate.value = false
+          }, MARQUEE_MS)
+        })
+      })
+    }, { immediate: true })
+
+    // 逐字进度：实时写进 live 那一行（不重建行结构，所以不影响上移动画）
+    watch(curSegments, (segs) => {
+      const rows = barRows.value
+      if (!rows.length) return
+      const idx = rows.findIndex(r => r.live)
+      if (idx < 0) return
+      if (rows[idx].segs === segs) return
+      const next = rows.slice()
+      next[idx] = { ...next[idx], segs }
+      barRows.value = next
+    })
+
+    // 文本变化（同一行内）：原地更新，不做位移动画
+    watch([curText, nextText], () => {
+      if (!barShift.value) barRows.value = buildRows()
+    })
+
+    onBeforeUnmount(() => {
+      barGen++
+      clearTimeout(barTimer)
+    })
+
+    const trackStyle = computed(() => ({
+      transform: barShift.value
+        ? `translateY(calc(-${barShift.value} * var(--bar-row-h, 19px)))`
+        : 'none',
+      transition: barAnimate.value
+        ? `transform ${MARQUEE_MS}ms cubic-bezier(.33, 1, .68, 1)`
+        : 'none',
+    }))
+
     const barStyles = computed(() => ({
       opacity: setting['desktopLyric.style.opacity'] / 100,
       fontFamily: setting['desktopLyric.style.font'] ?? undefined,
+      // 歌词行统一槽位高度（当前行 13px / 下一行 11px 共用同一行高）。
+      // 位移必须精确等于一行，否则两种字号会让"顶上来的位置"错开半行。
+      '--bar-row-h': '19px',
     }))
     const ctxStyles = computed(() => ({
       left: setting['desktopLyric.mode'] == 'bar' && ctxEdge.value == 'right' ? 'auto' : setting['desktopLyric.mode'] == 'bar' ? '4px' : `${ctxPosition.value.x}px`,
@@ -215,11 +327,15 @@ export default {
     return {
       setting,
       musicInfo,
+      // 模板里用 lyric.line 做换行动画的 key，必须暴露，否则整个歌词条渲染失败
+      lyric,
       coverSrc,
       handleCoverError,
       curText,
       curSegments,
       nextText,
+      barRows,
+      trackStyle,
       barStyles,
       ctxStyles,
       handleContextMenu,
@@ -284,7 +400,8 @@ export default {
 }
 
 .info {
-  flex: none;
+  // 可收缩：宽度紧张时优先让给歌词（歌词是主体，歌名截断比歌词截断可接受）
+  flex: 0 1 auto;
   max-width: 160px;
   min-width: 0;
   font-size: 12px;
@@ -309,17 +426,46 @@ export default {
   justify-content: center;
   line-height: 1.2;
 }
+
+// ---------------- 整列上移（复刻 TaskbarLyrics 的上划观感）----------------
+// 视口固定两行高并裁切；内部的 .lrcTrack 由 JS 用 transform 上移一行。
+// 换行时旧句完整地从顶部滑出、下一句顶上来成为当前行、再下一句补在底部。
+// 行高统一用 --bar-row-h：当前行与下一行同高，位移才能精确等于一行，
+// 否则两种字号会让"顶上来的位置"错开半行。
+.lrcViewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  min-width: 0;
+  height: calc(var(--bar-row-h, 19px) * 2);
+  contain: paint;
+  // 不加 mask-image：见 LyricIsland 里同段说明（遮罩会让滚动中的半行彻底看不见，
+  // 视觉上像"少了一行"）。overflow:hidden 已经足够裁切。
+}
+.lrcTrack {
+  display: flex;
+  flex-flow: column nowrap;
+  min-width: 0;
+  will-change: transform;
+}
 .curLine {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-lyric-unplay, rgba(255, 255, 255, 0.9));
+  // 当前行取 --color-lyric-played：该变量由 useTheme 统一解析 ——
+  // 默认跟随详情页强调色，用户在设置页手动改色后改用自己的颜色。
+  color: var(--color-lyric-played, var(--detail-accent-bright, #fff));
+  height: var(--bar-row-h, 19px);
+  line-height: var(--bar-row-h, 19px);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  // 顶上来时字号会从"下一行"变成"当前行"，过渡一下更连贯
+  transition: font-size .3s ease, color .3s ease;
 }
 .word {
-  color: var(--color-lyric-unplay, rgba(255, 255, 255, 0.9));
-  background-image: linear-gradient(to right, var(--color-lyric-played, #07c556) 0 var(--word-progress), var(--color-lyric-unplay, rgba(255, 255, 255, 0.9)) var(--word-progress) 100%);
+  color: var(--color-lyric-unplay, var(--detail-font-bright, rgba(255, 255, 255, 0.9)));
+  // 已唱部分取详情页强调色（对齐详情页 .font-mode 的逐字渐变），未唱部分保持常规文字色
+  background-image: linear-gradient(to right, var(--color-lyric-played, var(--detail-accent-bright, #07c556)) 0 var(--word-progress), var(--color-lyric-unplay, var(--detail-font-bright, rgba(255, 255, 255, 0.9))) var(--word-progress) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -327,9 +473,12 @@ export default {
 .nextLine {
   font-size: 11px;
   color: var(--lyric-text-muted);
+  height: var(--bar-row-h, 19px);
+  line-height: var(--bar-row-h, 19px);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  transition: font-size .3s ease;
 }
 .emptyLine {
   color: var(--lyric-text-muted);

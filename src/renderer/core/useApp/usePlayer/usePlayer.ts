@@ -27,7 +27,8 @@ import {
 } from '@renderer/store/player/action'
 
 import { appSetting } from '@renderer/store/setting'
-import { isPlay } from '@renderer/store/player/state'
+import { isPlay, isPlayerError } from '@renderer/store/player/state'
+import { PLAY_ERROR } from '@renderer/utils/message'
 
 import useLyric from './useLyric'
 import useVolume from './useVolume'
@@ -161,22 +162,43 @@ export default () => {
 
   window.app_event.on('play', setPlayStatus)
   window.app_event.on('pause', setPauseStatus)
-  // Luminous Harmonic: 播放失败自动切歌 — 部分歌曲播放会抛错 (如 Cannot read
-  // properties of undefined), 连续失败 ≤3 次时自动跳下一首, 成功播放后计数清零
+  // Luminous Harmonic: 播放失败自动切歌规则（与换源时限规则配合）——
+  //   · 只有「本首歌确实放不了」（换源预算耗尽 / 所有音源失败）才计入连续失败
+  //   · 服务器繁忙 / 断网 / 单源超时属非致命错误, 不在计数范围内（已由取URL层做有限重试）
+  //   · 连续失败达到 player.maxConsecutiveFailures（默认3）即停止, 避免整列表被跳过
+  //   · 任一音频真正播放成功（onPlaying）即清零
   let consecutivePlayErrors = 0
-  window.app_event.on('error', () => {
+  const resetPlayErrorCount = () => { consecutivePlayErrors = 0 }
+  window.app_event.on('error', (errCode?: number, kind?: string) => {
     setPauseStatus()
-    consecutivePlayErrors++
-    if (consecutivePlayErrors == 4) setAllStatus(t('player__error_skip_stopped'))
-    if (consecutivePlayErrors <= 3) {
-      setTimeout(() => {
-        if (!isPlay.value) void playNext(true)
-      }, 600)
+    // 非致命（服务器繁忙/断网/单源超时）与用户主动中断：不计入连续失败, 也不触发跳过
+    if (kind === PLAY_ERROR.none || kind === PLAY_ERROR.transient || errCode === 1) {
+      console.log('[播放失败] 非致命, 不计入跳过计数:', kind, errCode)
+      return
     }
+    const maxFailures = Math.max(1, appSetting['player.maxConsecutiveFailures'] ?? 3)
+    consecutivePlayErrors++
+    console.log(`[播放失败] 连续第 ${consecutivePlayErrors}/${maxFailures} 首 (${kind ?? 'unknown'})`)
+    if (consecutivePlayErrors > maxFailures) {
+      setAllStatus(t('player__error_skip_stopped'))
+      return
+    }
+    if (window.lx.isPlayedStop) return
+    // 自动切歌要保守：等一会儿，并且要求"确实仍处于错误态"。
+    // 之前只看 600ms 后 !isPlay 就切 —— 双击同一首时 src 竞争会短暂让 isPlay 为 false，
+    // 于是明明能播也被跳掉（用户反馈"双击后秒换下一首，再点一次就好"）。
+    const failedMusicId = musicInfo.id
+    setTimeout(() => {
+      if (isPlay.value) return
+      if (!isPlayerError.value) return // 已经自己恢复了（加载成功/被用户重新播放）
+      if (musicInfo.id !== failedMusicId) return // 期间已经换了别的歌
+      void playNext(true)
+    }, 1500)
   })
-  window.app_event.on('play', () => {
-    consecutivePlayErrors = 0
-  })
+  // 真正出声即视为成功（onPlaying 才会触发 app_event.play）
+  window.app_event.on('play', resetPlayErrorCount)
+  // 停止（含用户手动切歌）视为用户接管, 计数清零
+  window.app_event.on('stop', resetPlayErrorCount)
   window.app_event.on('stop', setStopStatus)
   window.app_event.on('musicToggled', handleUpdatePlayInfo)
   window.app_event.on('playerCanplay', handleCanplay)

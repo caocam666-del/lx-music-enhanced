@@ -108,6 +108,12 @@ const hotKey = {
       action: 'toggle_always_top',
       type: '',
     },
+    // Luminous Harmonic: 灵动岛复位位置（拖丢了/多屏插拔后一键拉回停靠位）
+    reset_island_position: {
+      name: 'reset_island_position',
+      action: 'reset_island_position',
+      type: '',
+    },
   },
 }
 

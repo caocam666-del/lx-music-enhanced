@@ -2,7 +2,7 @@ import { APP_EVENT_NAMES } from '@common/constants'
 import initRendererEvent, { sendMainWindowInitedEvent } from './rendererEvent'
 import { setLrcConfig } from './config'
 import { HOTKEY_DESKTOP_LYRIC } from '@common/hotKey'
-import { closeWindow, createWindow, isExistWindow } from './main'
+import { closeWindow, createWindow, isExistWindow, resetIslandPosition } from './main'
 // import main from './main'
 // import { Event, EVENT_NAMES } from './event'
 
@@ -52,6 +52,11 @@ export default () => {
   global.lx.event_app.on('hot_key_down', ({ type, key }) => {
     let info = global.lx.hotKey.config.global.keys[key]
     if (!info || info.type != APP_EVENT_NAMES.winLyricName) return
+    // Luminous Harmonic: 灵动岛复位位置是「动作型」快捷键, 没有对应的布尔设置项
+    if (info.action == HOTKEY_DESKTOP_LYRIC.reset_island_position.action) {
+      resetIslandPosition()
+      return
+    }
     let newSetting: Partial<LX.AppSetting> = {}
     let settingKey: keyof LX.AppSetting
     switch (info.action) {

@@ -5,7 +5,15 @@
       <span :class="$style.timeLabel">{{ nowPlayTimeStr }}</span>
       <div :class="$style.progressContainer">
         <transition enter-active-class="animated fadeIn" leave-active-class="animated fadeOut">
-          <span v-if="status" :class="$style.getStatus">{{ status }}</span>
+          <button
+            v-if="status"
+            type="button" :class="$style.getStatus"
+            :title="$t('diag__open_tip')"
+            :aria-label="$t('diag__open_tip')"
+            :aria-expanded="isShowDiagnosis ? 'true' : 'false'"
+            @click="isShowDiagnosis = !isShowDiagnosis">
+            {{ status }}
+          </button>
         </transition>
         <common-progress-bar
           :class-name="$style.progress"
@@ -14,6 +22,7 @@
           :is-active-transition="isActiveTransition"
           :wave="true"
         />
+        <play-diagnosis-panel :show="isShowDiagnosis" @close="isShowDiagnosis = false" />
       </div>
       <span :class="$style.timeLabel">{{ maxPlayTimeStr }}</span>
     </div>
@@ -23,18 +32,29 @@
         <control-btns part="left" />
       </div>
       <div :class="$style.playControl">
-        <div :class="$style.playBtn" :aria-label="$t('player__prev')" @click="playPrev()">
+        <button
+          type="button" :class="$style.playBtn"
+          :aria-label="$t('player__prev')" :title="$t('player__prev')"
+          @click="playPrev()">
           <svg viewBox="0 0 1024 1024" aria-hidden="true"><use xlink:href="#icon-prevMusic" /></svg>
-        </div>
-        <div data-player-toggle :class="[$style.playBtn, $style.mainPlayBtn]" :aria-label="isPlay ? $t('player__pause') : $t('player__play')" @click="togglePlay">
+        </button>
+        <button
+          type="button" data-player-toggle
+          :class="[$style.playBtn, $style.mainPlayBtn]"
+          :aria-label="isPlay ? $t('player__pause') : $t('player__play')"
+          :title="isPlay ? $t('player__pause') : $t('player__play')"
+          @click="togglePlay">
           <span :class="[$style.iconMorph, { [$style.iconMorphActive]: isPlay }]">
             <svg class="icon-pause" viewBox="0 0 1024 1024" aria-hidden="true"><use xlink:href="#icon-pause" /></svg>
             <svg class="icon-play" viewBox="0 0 1024 1024" aria-hidden="true"><use xlink:href="#icon-play" /></svg>
           </span>
-        </div>
-        <div :class="$style.playBtn" :aria-label="$t('player__next')" @click="playNext()">
+        </button>
+        <button
+          type="button" :class="$style.playBtn"
+          :aria-label="$t('player__next')" :title="$t('player__next')"
+          @click="playNext()">
           <svg viewBox="0 0 1024 1024" aria-hidden="true"><use xlink:href="#icon-nextMusic" /></svg>
-        </div>
+        </button>
       </div>
       <div :class="[$style.sideTools, $style.sideRight]">
         <control-btns part="right" />
@@ -46,6 +66,7 @@
 <script setup>
 import { playNext, playPrev, togglePlay } from '@renderer/core/player'
 import { status, isPlay } from '@renderer/store/player/state'
+import { isShowDiagnosis } from '@renderer/core/player/diagnosis'
 import usePlayProgress from '@renderer/utils/compositions/usePlayProgress'
 import ControlBtns from './components/ControlBtns.vue'
 
@@ -100,18 +121,30 @@ const {
 .progress { height: 100%; }
 
 // Luminous Harmonic: 「歌曲链接获取中」等状态提示 — 浮在进度条尾端上方,
-// 不再挤占右侧功能按钮空间 (此前会把按钮顶出视野)
+// 不再是纯文本：可点击展开播放诊断（试过哪些音源、各自结果与耗时）
 .getStatus {
   position: absolute;
   right: 0;
   bottom: 26px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
   color: var(--detail-font-bright, var(--color-font-label));
   font-size: 11px;
   line-height: 1.2;
+  font-family: inherit;
   white-space: nowrap;
   opacity: .9;
   text-shadow: var(--detail-font-shadow, none);
-  pointer-events: none;
+  cursor: pointer;
+  transition: background-color .2s ease, opacity .2s ease;
+
+  &:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--detail-font-bright, var(--color-font)) 16%, transparent);
+  }
+  &:focus-visible { outline: 2px solid var(--detail-accent-bright, var(--color-primary)); outline-offset: 1px; }
 }
 
 .timeLabel {
@@ -171,7 +204,9 @@ const {
   align-items: center;
   justify-content: center;
   padding: 5px;
+  border: none;
   border-radius: 50%;
+  background: transparent;
   // 借鉴 Pure-music Monet: 功能按钮图标随封面强调色变化（亮化版）
   color: var(--detail-accent-bright, var(--color-font));
   cursor: pointer;
@@ -184,6 +219,11 @@ const {
     transform: scale(1.08);
   }
   &:active { transform: scale(.94); }
+  // Luminous Harmonic: 键盘可达 — 统一焦点环, 只对键盘聚焦显示
+  &:focus-visible {
+    outline: 2px solid var(--detail-accent-bright, var(--color-primary));
+    outline-offset: 2px;
+  }
 }
 
 .mainPlayBtn {

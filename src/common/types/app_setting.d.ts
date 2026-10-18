@@ -310,6 +310,26 @@ declare global {
       'player.autoSwitchSourceOnError': boolean
 
       /**
+       * 换源时单个音源的最长等待时间（秒）
+       */
+      'player.sourceSwitch.sourceTimeout': number
+
+      /**
+       * 一整轮换源的总预算（秒），超时即止损进入跳过判定
+       */
+      'player.sourceSwitch.totalBudget': number
+
+      /**
+       * 音频加载第一级超时（秒）：超时后刷新 URL 重试
+       */
+      'player.loadTimeout': number
+
+      /**
+       * 连续多少首播放失败后停止自动切歌
+       */
+      'player.maxConsecutiveFailures': number
+
+      /**
        * 点击相同列表内的歌曲切歌时是否清空已播放列表（随机模式下列表内所有歌曲会重新参与随机）
        */
       'player.isAutoCleanPlayedList': boolean
@@ -434,6 +454,84 @@ declare global {
       'desktopLyric.y': number | null
 
       /**
+       * 灵动岛收起态宽度（DIP）
+       */
+      'desktopLyric.island.autoWidth': boolean
+      'desktopLyric.island.width': number
+
+      /**
+       * 灵动岛收起态高度（DIP）
+       */
+      'desktopLyric.island.height': number
+
+      /**
+       * 灵动岛停靠边：默认 top（屏幕顶部中央）
+       */
+      'desktopLyric.island.dock': 'top' | 'bottom' | 'left' | 'right'
+
+      /**
+       * 灵动岛吸附边距（DIP）
+       */
+      'desktopLyric.island.margin': number
+
+      /**
+       * 灵动岛展开态宽度（DIP）
+       */
+      'desktopLyric.island.expandWidth': number
+
+      /**
+       * 灵动岛展开态高度（DIP）
+       */
+      'desktopLyric.island.expandHeight': number
+
+      /**
+       * 灵动岛展开触发方式：hover 悬停 / click 点击
+       */
+      'desktopLyric.island.expandTrigger': 'hover' | 'click'
+
+      /**
+       * 悬停多久后展开（毫秒，防抖）
+       */
+      'desktopLyric.island.hoverDelay': number
+
+      /**
+       * 移出多久后收起（毫秒）
+       */
+      'desktopLyric.island.leaveDelay': number
+
+      /**
+       * 展开态歌词显示行数（1/3/5）
+       */
+      'desktopLyric.island.lyricLines': number
+
+      /**
+       * 灵动岛流光背景：none 纯净 / dynamic 动态流光 / rhythm 节奏律动（拾音器）
+       */
+      'desktopLyric.island.flowStrength': number
+      'desktopLyric.island.opacity': number
+      'desktopLyric.island.flowMode': 'none' | 'dynamic' | 'rhythm'
+
+      /**
+       * 灵动岛取色来源：detail 跟随详情页（封面取色）/ theme 跟随主题色
+       */
+      'desktopLyric.island.colorSource': 'detail' | 'theme'
+
+      /**
+       * 展开态歌词字号（px）
+       */
+      'desktopLyric.island.lyricFontSize': number
+
+      /**
+       * 收起态是否显示封面缩略图
+       */
+      'desktopLyric.island.showCover': boolean
+
+      /**
+       * 展开态歌词对齐：left 左 / center 中 / right 右
+       */
+      'desktopLyric.island.lyricAlign': 'left' | 'center' | 'right'
+
+      /**
        * 是否允许桌面歌词窗口拖出主屏幕之外
        */
       'desktopLyric.isLockScreen': boolean
@@ -461,7 +559,7 @@ declare global {
       /**
        * 桌面歌词形态（normal = 常规歌词窗 / bar = 左下角歌词条）
        */
-      'desktopLyric.mode': 'normal' | 'bar'
+      'desktopLyric.mode': 'normal' | 'bar' | 'island'
 
       /**
        * 歌词对齐方式
@@ -486,6 +584,7 @@ declare global {
       /**
        * 桌面歌词未播放字体颜色
        */
+      'desktopLyric.style.colorFollowDetail': boolean
       'desktopLyric.style.lyricUnplayColor': string
 
       /**

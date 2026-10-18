@@ -120,7 +120,6 @@ export default {
 
     const dom_content_ref = ref(null)
     const dom_search_ref = ref(null)
-
     // Luminous Harmonic: 设置页重构 — 16 组归纳为 10 组, 每组可堆叠多个设置组件
     const tocList = computed(() => {
       return [

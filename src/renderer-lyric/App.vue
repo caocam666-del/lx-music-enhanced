@@ -1,5 +1,5 @@
 <template>
-  <div id="container" :class="[{ lock: setting['desktopLyric.isLock'] }, { hide: setting['desktopLyric.mode'] != 'bar' && (isHide || isHoverHide) }, { bar: setting['desktopLyric.mode'] == 'bar' }]">
+  <div id="container" :class="[{ lock: setting['desktopLyric.isLock'] }, { hide: setting['desktopLyric.mode'] == 'normal' && (isHide || isHoverHide) }, { bar: setting['desktopLyric.mode'] == 'bar' }, { island: setting['desktopLyric.mode'] == 'island' }]">
     <div id="main">
       <transition enter-active-class="animated-fast fadeIn" leave-active-class="animated-fast fadeOut">
         <div v-show="!setting['desktopLyric.isLock']" class="control-bar">
@@ -7,13 +7,16 @@
         </div>
       </transition>
       <layout-lyric-bar v-if="setting['desktopLyric.mode'] == 'bar'" />
+      <layout-lyric-island v-else-if="setting['desktopLyric.mode'] == 'island'" />
       <template v-else>
         <layout-lyric-vertical v-if="setting['desktopLyric.direction'] == 'vertical'" />
         <layout-lyric-horizontal v-else />
         <div v-if="!lyric.lines.length" class="empty-lyric" role="status">暂无歌词</div>
       </template>
+      <!-- Luminous Harmonic: 灵动岛自带拾音器（IslandFlowBg），此处不再叠一层，
+           否则它会铺满整个窗口且被压在岛面之下（看不见） -->
       <transition enter-active-class="animated-fast fadeIn" leave-active-class="animated-fast fadeOut">
-        <common-audio-visualizer v-if="setting['desktopLyric.audioVisualization']" />
+        <common-audio-visualizer v-if="setting['desktopLyric.audioVisualization'] && setting['desktopLyric.mode'] != 'island'" />
       </transition>
     </div>
     <template v-if="isShowResize">
@@ -209,6 +212,21 @@ body {
     -webkit-backdrop-filter: none;
     border: none;
     border-radius: 0;
+  }
+  .control-bar {
+    display: none;
+  }
+}
+
+// Luminous Harmonic: 灵动岛模式 — 窗口即药丸, #main 全透明, 由岛组件自己画背景
+#container.island {
+  #main {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
   }
   .control-bar {
     display: none;

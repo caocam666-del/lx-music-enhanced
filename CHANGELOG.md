@@ -6,6 +6,27 @@ Project versioning adheres to [Semantic Versioning](http://semver.org/).
 Commit convention is based on [Conventional Commits](http://conventionalcommits.org).
 Change log format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [2.13.0](https://github.com/caocam666-del/lx-music-enhanced/releases/tag/v2.13.0) - 2026-10-18
+
+歌词灵动岛 · 播放稳定性修复
+
+本版把桌面歌词升级为"灵动岛"，并修复了一批歌词与播放相关的长期问题。完整图文说明见 [docs/RELEASE_NOTES_v2.13.0.md](docs/RELEASE_NOTES_v2.13.0.md)。
+
+### 新增
+
+- **歌词灵动岛**：贴屏幕顶部居中，收起为胶囊、展开为播放卡；支持停靠四边、悬停/点击展开、点击歌词跳转、拖动进度条、滚轮调字号、流光背景（复刻详情页）、颜色跟随详情页。
+- **任务栏歌词宽度可调**：设置页新增滑块（320–1200px），拖动即时生效。
+- **设置项**：灵动岛取消「展开高度自动抬高」，改为在设置页提示所需最小高度。
+
+### 修复
+
+- **修复 任务栏歌词逐字高亮冻结在前一两个字**：逐字进度是每帧变化的，旧实现把片段快照进行列表后不再更新。
+- **修复 双击列表歌曲后播放失败并秒切下一首**：play() 的 AbortError 不再算作播放失败；换源抖动期内的瞬时错误被忽略；自动切歌判定放宽到 1500ms 且要求确实处于错误态。
+- **修复 歌词条宽度调不动 / 切换歌词模式后被重置**：窗口实际尺寸不再回写 `desktopLyric.width/height`。
+- **修复 灵动岛几何设置改动后窗口不重排**（停靠边、收起态宽度、边距、自适应宽度此前均为摆设）。
+- **修复 展开态偶发只剩两行歌词 / 卡片被压成胶囊高度**。
+- **修复 拖动进度条后歌词消失数秒**：大跨度跳转直接落位，不再播放多行滚动。
+
 ## [2.12.5](https://github.com/caocam666-del/lx-music-enhanced/releases/tag/v2.12.5) - 2026-09-13
 
 歌词同步修复 · 排行榜修复 · 律动流光

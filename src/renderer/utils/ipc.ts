@@ -569,6 +569,12 @@ export const allHotKeys = markRaw({
       action: hotKeys.HOTKEY_DESKTOP_LYRIC.toggle_always_top.action,
       type: APP_EVENT_NAMES.winLyricName,
     },
+    // Luminous Harmonic: 灵动岛复位位置（拖丢了 / 多屏插拔后一键拉回）
+    {
+      name: hotKeys.HOTKEY_DESKTOP_LYRIC.reset_island_position.name,
+      action: hotKeys.HOTKEY_DESKTOP_LYRIC.reset_island_position.action,
+      type: APP_EVENT_NAMES.winLyricName,
+    },
   ],
 })
 

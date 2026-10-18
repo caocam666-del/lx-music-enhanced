@@ -1,17 +1,57 @@
 import Lyric from '@common/utils/lyric-font-player'
 import { getAnalyser, getCurrentTime as getPlayerCurrentTime, isAudioActivelyPlaying } from '@renderer/plugins/player'
 import { lyric, setLines, setOffset, setTempOffset, setText } from '@renderer/store/player/lyric'
-import { isPlay, musicInfo } from '@renderer/store/player/state'
+import { coverAccent, coverPalette, isPlay, musicInfo } from '@renderer/store/player/state'
 import { setStatusText } from '@renderer/store/player/action'
 import { playProgress } from '@renderer/store/player/playProgress'
 import { markRawList } from '@common/utils/vueTools'
 import { appSetting, updateSetting } from '@renderer/store/setting'
 import { onNewDesktopLyricProcess } from '@renderer/utils/ipc'
 import { pause as pausePlayer, play as playPlayer, playNext, playPrev, togglePlay } from '@renderer/core/player'
+import { getCoverPalette } from '@renderer/utils/coverPalette'
+import { resolveCoverColors } from '@renderer/utils/coverAccentCache'
+import { computeDetailAccent, DETAIL_FONT_BRIGHT, DETAIL_LYRIC_SHADOW } from '@renderer/utils/detailAccent'
 
 const getCurrentTime = () => {
   return getPlayerCurrentTime() * 1000
 }
+
+/**
+ * Luminous Harmonic: 歌词窗（灵动岛/歌词条）的进度单位统一为「毫秒」。
+ *
+ * 踩过的坑：`played_time` 来自 getCurrentTime()（毫秒），而 playProgress.maxPlayTime
+ * 是「秒」—— 两者混发会让歌词窗 progress.max 变成 100 而不是 100000，
+ * 比例算成 1、时间标签显示 0:00（用户反馈「进度条是无效的」）。
+ */
+const getMaxTimeMs = () => (playProgress.maxPlayTime || 0) * 1000
+
+// Luminous Harmonic: 歌词窗/灵动岛要和详情页「取同一套色」，所以把详情页那套
+// 强调色（--detail-accent-bright）与中性文字色（--detail-font-bright）一并推过去。
+const getDetailColors = () => {
+  // 取色来源：detail = 跟详情页（封面取色）/ theme = 跟主题色
+  const useTheme = appSetting['desktopLyric.island.colorSource'] == 'theme'
+  const accent = useTheme
+    ? { accentBright: 'var(--color-primary)' }
+    : computeDetailAccent({
+      coverAccent: coverAccent.value,
+      backgroundMode: appSetting['playDetail.backgroundMode'],
+      uiAccent: appSetting['playDetail.uiAccent'],
+    })
+  const useDetailText = !useTheme && appSetting['playDetail.backgroundMode'] != 'theme'
+  return {
+    accent: accent.accentBright,
+    // 中性文字色 / 歌词阴影仅在「封面取色」模式下有确定的近白色；
+    // 主题色/主题背景模式交给歌词窗的 CSS 变量回退（--lyric-text）
+    font_bright: useDetailText ? DETAIL_FONT_BRIGHT : undefined,
+    lyric_shadow: useDetailText ? DETAIL_LYRIC_SHADOW : undefined,
+  }
+}
+
+// 歌词窗只用得到「文本 + 起始时间」，推送精简行表即可（点歌词跳转需要 time）
+const getLyricLines = () => lyric.lines.map(line => ({
+  text: line.text ?? '',
+  time: line.time ?? 0,
+}))
 
 let lrc: Lyric
 let desktopLyricPort: Electron.IpcRendererEvent['ports'][0] | null = null
@@ -63,6 +103,32 @@ const handleDesktopLyricMessage = (action: LX.DesktopLyric.WinMainActions) => {
       case 'toggle':
         togglePlay()
         break
+      // Luminous Harmonic: 歌词窗（灵动岛/歌词条）拖动进度条 / 点歌词行 → 跳转播放位置。
+      //
+      // 单位换算（踩过的坑）：歌词窗发来的是「毫秒」（与 played_time/max_time 一致），
+      // 而 window.app_event.setProgress 的第一个参数是「秒」（会直接写给
+      // audio.currentTime，见 usePlayProgress.setProgress → setCurrentTime）。
+      // 传毫秒会让位置被放大 1000 倍而被播放器拒绝（点击无声无息）。
+      // Luminous Harmonic: 歌词窗（灵动岛/歌词条）拖动进度条 / 点歌词行 → 跳转播放位置。
+      //
+      // 载荷形状（踩过的坑）：歌词窗 sendPlayerAction 发出的结构是
+      //   { action: 'player_action', data: { action: 'seek', data: <毫秒> } }
+      // 但在这一层 action.data 已经是内层对象 { action:'seek', data:<毫秒> }，
+      // 所以取目标位置要读 action.data.data。此前误读成 action.data（对象），
+      // Number(对象) = NaN → 直接 break，seek 永远静默失败（"怎么点都跳回原地"）。
+      //
+      // 单位换算：歌词窗发的是「毫秒」（与 played_time/max_time 一致），
+      // 而 window.app_event.setProgress 的第一个参数是「秒」（见 usePlayProgress
+      // .setProgress → setCurrentTime 直接写给 audio.currentTime）。
+      case 'seek': {
+        const inner = action.data as { action?: string, data?: unknown } | undefined
+        const rawMs = Number(inner?.data)
+        if (!Number.isFinite(rawMs)) break
+        const maxSec = playProgress.maxPlayTime
+        const targetSec = Math.max(0, maxSec > 0 ? Math.min(rawMs / 1000, maxSec) : rawMs / 1000)
+        window.app_event.setProgress(targetSec)
+        break
+      }
     }
     return
   }
@@ -83,6 +149,10 @@ const handleDesktopLyricMessage = (action: LX.DesktopLyric.WinMainActions) => {
           isPlay: isPlay.value,
           line: lyric.line,
           played_time: getCurrentTime(),
+          // Luminous Harmonic: 灵动岛进度条需要总时长；取色与可跳转歌词行表一并推过去
+          max_time: getMaxTimeMs(),
+          ...getDetailColors(),
+          lines: getLyricLines(),
         },
       })
       break
@@ -93,6 +163,7 @@ const handleDesktopLyricMessage = (action: LX.DesktopLyric.WinMainActions) => {
           isPlay: isPlay.value,
           line: lyric.line,
           played_time: getCurrentTime(),
+          max_time: getMaxTimeMs(),
         },
       })
       break
@@ -148,7 +219,11 @@ export const init = () => {
   })
 
   // 封面通常在播放开始后异步获取，更新后同步到歌词窗口。
-  window.app_event.on('picUpdated', sendInfo)
+  // 同时重算封面取色（否则取色仍停留在上一首/默认色）。
+  window.app_event.on('picUpdated', () => {
+    sendInfo()
+    void refreshCoverColors()
+  })
 }
 
 export const setLyricOffset = (offset: number) => {
@@ -233,7 +308,12 @@ export const syncPlayPosition = (trusted = false) => {
       // 不可信来源的残留判别: 歌词未就绪 / 超出最后一行 / 落在旧歌末尾 3s 内 → 从 0 开始
       if (!lines?.length || !isFinite(lyricDuration) || time > lyricDuration || (oldMax > 0 && time > oldMax - 3000)) time = 0
     }
-    sendDesktopLyricInfo({ action: 'set_play', data: time })
+    // Luminous Harmonic: 一并带上总时长 —— 歌词窗的进度条依赖它算比例；
+    // 原先只发位置，导致歌词窗 maxPlayTime 恒为 0（进度条无效、时间标签恒 0:00）
+    sendDesktopLyricInfo({
+      action: 'set_play',
+      data: { time, max_time: getMaxTimeMs() },
+    })
     lrc.play(time)
   })
 }
@@ -278,7 +358,11 @@ export const play = (time?: number) => {
   // 播放元素的 currentTime 在任何切歌路径下都是准确的当前播放位置。
   const currentTimeMs = (time ?? getPlayerCurrentTime()) * 1000
   lrc.play(currentTimeMs)
-  sendDesktopLyricInfo({ action: 'set_play', data: currentTimeMs })
+  // Luminous Harmonic: 带上总时长，否则歌词窗进度条的比例无处可算
+  sendDesktopLyricInfo({
+    action: 'set_play',
+    data: { time: currentTimeMs, max_time: getMaxTimeMs() },
+  })
 }
 
 export const pause = () => {
@@ -311,6 +395,43 @@ export const sendInfo = () => {
       isPlay: isPlay.value,
       line: lyric.line,
       played_time: getCurrentTime(),
+      // Luminous Harmonic: 这条路径原先漏了总时长，导致歌词窗进度条不动、时间标签恒 0:00
+      max_time: getMaxTimeMs(),
+      ...getDetailColors(),
+      lines: getLyricLines(),
     },
   })
+}
+
+/**
+ * Luminous Harmonic: 封面取色兜底。
+ *
+ * coverAccent/coverPalette 原本只在「播放详情页」加载封面时被写入 —— 用户不打开
+ * 详情页时它永远是初始默认蓝，导致桌面歌词/灵动岛的取色与详情页不一致。
+ *
+ * 这里在换歌 / pic 变化时自己算一次，复用同一套 k-means 算法与同一缓存键，
+ * 结果与详情页一致；取到新颜色后立即推给歌词窗。
+ */
+const coverColorsCache = new Map()
+export const refreshCoverColors = async () => {
+  const url = musicInfo.pic
+  if (!url) return
+  const result = await resolveCoverColors({
+    url,
+    cache: coverColorsCache,
+    loadImage: (coverUrl: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new window.Image()
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error('cover load failed'))
+      image.src = coverUrl
+    }),
+    extractPalette: (image: HTMLImageElement, key: string) => getCoverPalette(image, key),
+  })
+  if (!result) return
+  // 同一张封面可能已被详情页写入，避免重复赋值触发无谓的重渲染
+  if (coverAccent.value == result.accent) return
+  coverAccent.value = result.accent
+  coverPalette.value = result.palette
+  // 取色完成后把新颜色推给歌词窗
+  sendInfo()
 }

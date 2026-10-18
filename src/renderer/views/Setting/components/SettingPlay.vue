@@ -31,8 +31,42 @@ dd
     base-checkbox(id="setting_player_awap_lyric_trans_roma" :model-value="appSetting['player.isSwapLyricTranslationAndRoma']" :label="$t('setting__player_swap_lyric_trans_roma')" @update:model-value="updateSetting({'player.isSwapLyricTranslationAndRoma': $event})")
   .gap-top
     base-checkbox(id="setting_player_auto_skip_on_error" :model-value="appSetting['player.autoSkipOnError']" :label="$t('setting__play_auto_skip_on_error')" @update:model-value="updateSetting({'player.autoSkipOnError': $event})")
+    common-setting-reset-btn(setting-key="player.autoSkipOnError" :label="$t('setting__play_auto_skip_on_error')" :modified="modifiedSet.has('player.autoSkipOnError')")
   .gap-top
     base-checkbox(id="setting_player_auto_switch_source_on_error" :model-value="appSetting['player.autoSwitchSourceOnError']" :label="$t('setting__play_auto_switch_source_on_error')" @update:model-value="updateSetting({'player.autoSwitchSourceOnError': $event})")
+    common-setting-reset-btn(setting-key="player.autoSwitchSourceOnError" :label="$t('setting__play_auto_switch_source_on_error')" :modified="modifiedSet.has('player.autoSwitchSourceOnError')")
+  //- Luminous Harmonic: 换源时限规则 —— 每个音源等多久 / 整轮换源多久止损
+  h3#play_source_switch_timeout {{ $t('setting__play_source_switch_timeout') }}
+  div
+    .gap-top
+      label(:class="$style.rangeLabel")
+        span {{ $t('setting__play_source_timeout') }}
+        span(:class="$style.rangeValue") {{ appSetting['player.sourceSwitch.sourceTimeout'] }}s
+        common-setting-reset-btn(setting-key="player.sourceSwitch.sourceTimeout" :label="$t('setting__play_source_timeout')" :modified="modifiedSet.has('player.sourceSwitch.sourceTimeout')")
+      input(
+        type="range" :value="appSetting['player.sourceSwitch.sourceTimeout']"
+        min="3" max="20" step="1" :class="$style.range"
+        @input="updateSetting({'player.sourceSwitch.sourceTimeout': Number($event.target.value)})")
+      .p(:class="$style.tip") {{ $t('setting__play_source_timeout_tip') }}
+    .gap-top
+      label(:class="$style.rangeLabel")
+        span {{ $t('setting__play_source_budget') }}
+        span(:class="$style.rangeValue") {{ appSetting['player.sourceSwitch.totalBudget'] }}s
+        common-setting-reset-btn(setting-key="player.sourceSwitch.totalBudget" :label="$t('setting__play_source_budget')" :modified="modifiedSet.has('player.sourceSwitch.totalBudget')")
+      input(
+        type="range" :value="appSetting['player.sourceSwitch.totalBudget']"
+        min="8" max="60" step="1" :class="$style.range"
+        @input="updateSetting({'player.sourceSwitch.totalBudget': Number($event.target.value)})")
+      .p(:class="$style.tip") {{ $t('setting__play_source_budget_tip') }}
+    .gap-top
+      label(:class="$style.rangeLabel")
+        span {{ $t('setting__play_max_consecutive_failures') }}
+        span(:class="$style.rangeValue") {{ appSetting['player.maxConsecutiveFailures'] }}
+      input(
+        type="range" :value="appSetting['player.maxConsecutiveFailures']"
+        min="1" max="10" step="1" :class="$style.range"
+        @input="updateSetting({'player.maxConsecutiveFailures': Number($event.target.value)})")
+      .p(:class="$style.tip") {{ $t('setting__play_max_consecutive_failures_tip') }}
   .gap-top
     base-checkbox(id="setting_player_lyric_s2t" :model-value="appSetting['player.isS2t']" :label="$t('setting__play_lyric_s2t')" @update:model-value="updateSetting({'player.isS2t': $event})")
   .gap-top
@@ -88,6 +122,11 @@ import { isMac } from '@common/utils'
 import apiSourceInfo from '@renderer/utils/musicSdk/api-source-info'
 import { userApi } from '@renderer/store'
 import UserApiModal from './UserApiModal.vue'
+import { useSettingReset } from '@renderer/utils/compositions/useSettingReset'
+import { SETTING_KEYS_BY_COMPONENT } from '@renderer/utils/settingKeys'
+
+// Luminous Harmonic: 本组件涉及的设置键（统一登记在 utils/settingKeys.ts）
+const SETTING_KEYS = SETTING_KEYS_BY_COMPONENT.SettingPlay
 
 
 export default {
@@ -96,6 +135,8 @@ export default {
     UserApiModal,
   },
   setup() {
+    // Luminous Harmonic: 设置单项恢复默认（本页涉及的设置键统一登记在 utils/settingKeys.ts）
+    const { modifiedSet } = useSettingReset(SETTING_KEYS)
     const songTransitionModes = [
       { id: 'none' },
       { id: 'fade' },
@@ -222,6 +263,8 @@ export default {
       handleUpdateMaxOutputChannelCount,
       playQualityList,
       isMac,
+      // Luminous Harmonic: 设置恢复默认
+      modifiedSet,
     }
   },
 }
@@ -293,5 +336,29 @@ export default {
   .status {
     margin-left: 5px;
   }
+}
+
+// Luminous Harmonic: 换源时限规则 — 滑块行
+.rangeLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 2px 0;
+}
+.rangeValue {
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.range {
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+.tip {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--color-font-label);
+  line-height: 1.5;
 }
 </style>
