@@ -6,6 +6,13 @@ Project versioning adheres to [Semantic Versioning](http://semver.org/).
 Commit convention is based on [Conventional Commits](http://conventionalcommits.org).
 Change log format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [2.13.1](https://github.com/caocam666-del/lx-music-enhanced/releases/tag/v2.13.1) - 2026-10-18
+
+修复自动更新
+
+### 修复
+
+- **修复 自动更新失效**：`electron-builder` 只在 `--publish` 模式下生成 `resources/app-update.yml`，本地出包时该文件缺失，`electron-updater` 启动即报 `ENOENT`、检查更新永久失败。现显式注入该配置（安装版 / 便携版均生效），并在 Release 中补充 `latest.yml` 与 `.blockmap`。
 ## [2.13.0](https://github.com/caocam666-del/lx-music-enhanced/releases/tag/v2.13.0) - 2026-10-18
 
 歌词灵动岛 · 播放稳定性修复
